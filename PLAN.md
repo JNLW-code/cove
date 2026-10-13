@@ -1,8 +1,17 @@
 # Cove — plan
 
-**Status (14 Oct 2026, overnight run):** steps 1–6 done. Working through 7–12 without James. Blocked on James: 5b (paste hooks/settings-snippet.json into ~/.claude/settings.json), Spotify Automation and Calendar permission prompts when those tiles first load.
-Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
-Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
+**Status (14 Oct 2026, 1:20 am, overnight run):** all 12 steps built and checked as far as I can without you. Cove is installed in ~/Applications and running; the hook files are in ~/.claude/island.
+
+**Done:** mockup, skeleton, island shell, hook probe, Claude rows, Allow/Deny card, Spotify, Weather, Calendar + timer, peeks, settings menu with launch at login, README verified with its own commands, code and security reviews fixed. At rest: 0.0 % CPU, ~18 MB.
+
+**Left for you (nothing else is blocked on me):**
+1. Paste `hooks/settings-snippet.json` into `~/.claude/settings.json` inside the existing `"hooks"` object (merge SessionStart and PostToolUse into the arrays already there). Open it with `open -e ~/.claude/settings.json`. Then start a Claude session and hover the notch: you should see its row.
+2. Hover the notch once: macOS asks for Calendar access (the tile is hidden until you say yes).
+3. Spotify is not installed on this Mac. Install/open it, play a track, hover: the tile appears; the first Allow/Deny of the Automation prompt lets the buttons work.
+4. Menu → Launch at Login (approve in Login Items if macOS asks).
+5. Try a real permission: a Manual-mode session running `touch build/x` opens the island with Allow/Deny.
+
+**Blocked / cut:** Do Not Disturb peek (needs a paid team for INFocusStatusCenter, or Full Disk Access to watch the Focus assertions file; see Later). Brightness and AirPlay (no public API). Run B (phone answering while the hook waits) untested.
 
 ## What it is
 Cove is a menu-bar app (no Dock icon) that draws a black "Dynamic Island" over the MacBook notch.
@@ -108,13 +117,16 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 - [x] 7. Spotify tile (14 Oct): `Spotify.swift` — track/state from `com.spotify.client.PlaybackStateChanged` (no permission), AppleScript only when the island opens and for the buttons, only if Spotify runs; artwork from Spotify's CDN cached in Application Support/Cove/art; progress from the last notification + clock, 1 Hz only while open and playing. Automation tick via `Permissions.automation`. **Not tested live: Spotify is not installed on this Mac** (only leftover data in Application Support). Needs James: install/open Spotify, play a track, hover; accept the Automation prompt.
 - [x] 8. Weather tile (14 Oct): `Weather.swift`, Open-Meteo forecast + its geocoding API (same provider, no key), Sydney by default, one-shot refresh every 30 min (tolerance), refresh on open after 15 min, WMO code → SF Symbol. City change wired to the menu in step 11. Verified live: Sydney geocoded (-33.87, 151.21) and the tile shows today's temperature, icon, high/low.
 - [x] 9. Calendar tile (14 Oct): `CalendarModel.swift`, EventKit full access asked the first time the island opens by a real hover (not by dev commands), next non-all-day event in 7 days as "Wed 14 Oct · 9:30 am" (en-AU), reloads on EKEventStoreChanged and a one-shot rollover at the event's end. Timer tile was done in step 3 (start/pause/reset, 1 Hz only while running). **Calendar not tested live: needs James to hover and accept the Calendar prompt.**
-- [ ] 10. Peeks: app open/quit, charger, battery 20/10, DND attempt with findings.
-- [ ] 11. Settings menu, permission ticks, `make install`, launch at login.
-- [ ] 12. README verified by its own commands, /code-review, final CPU/memory, Later list.
+- [x] 10. Peeks (14 Oct): `Peeks.swift` — app open/quit for ticked apps (NSWorkspace, .regular only; defaults Slack, WhatsApp, Claude, Chrome, Xcode), charger connected and battery 20 %/10 % via IOPSNotificationCreateRunLoopSource, one peek at a time with a small queue, same key within 5 s = one peek, optional Pop sound. Verified: Calculator open/quit peeks (added temporarily to the list). DND: `INFocusStatusCenter` authorization needs the communication-notifications entitlement (paid team) → not possible; see Later for the Full Disk Access option.
+- [x] 11. Settings (14 Oct): menu with Theme, Tiles (+Edit), Weather City… (alert with a text field), Peeks (apps with ticks + Sound), Allow/Deny Shortcuts (4 presets), Permissions (ticks or a one-line reason), Launch at Login (SMAppService, only from ~/Applications, opens Login Items if approval is needed), Demo, Quit. `make install` done; Cove now runs from ~/Applications. Launch at Login not clicked by me (needs James).
+- [x] 12. README rewritten and verified by running `make uninstall` → `make install` → `make install-hooks` → `make fake`. /code-review on steps 7–11 (6 findings: 5 fixed, 1 cleanup skipped). At rest 0.0 % CPU, ~18 MB.
 
 ## Later
 - Chips row from ref 5: YouTube, Window, Messages, Clipboard, Tray, Recents, Mac.
-- Do Not Disturb peek, if v1 can't do it without polling.
+- Do Not Disturb peek. Options for James to pick: (a) watch `~/Library/DoNotDisturb/DB/Assertions.json` with a DispatchSource (no polling) — needs Full Disk Access for Cove; (b) a paid Apple team to use INFocusStatusCenter; (c) leave it out.
 - Context %: GSD's claude-ctx file only exists for Terminal sessions; may be estimated from the transcript.
 - Folder / tray shelf and the apps grid from the toolbar.
 - Brightness and AirPlay (no public API).
+- A shortcut recorder (any key combo) instead of the four presets.
+- Tiles row centred or sized to its contents when fewer than four tiles show (today the island keeps its 662 pt width).
+- The three `onChange` copy closures in `IslandController` could become one computed override per tile.
