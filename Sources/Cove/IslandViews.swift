@@ -152,6 +152,7 @@ struct PeekBody: View {
             }
         }
         .lineLimit(1)
+        .frame(width: island.notchSize.width - 16)
         .padding(.top, island.notchSize.height)
     }
 }

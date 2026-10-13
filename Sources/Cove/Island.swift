@@ -82,7 +82,6 @@ final class Island {
 
     static let expandedWidth: CGFloat = 662
     static let pillWidth: CGFloat = 371
-    static let peekWidth: CGFloat = 223
     static let ear: CGFloat = 8
 
     var mode: Mode = .resting
@@ -172,7 +171,7 @@ final class Island {
         switch mode {
         case .resting: notchSize
         case .compact: CGSize(width: Self.pillWidth + 2 * Self.ear, height: notchSize.height)
-        case .peek: CGSize(width: Self.peekWidth + 2 * Self.ear, height: peekHeight)
+        case .peek: CGSize(width: notchSize.width, height: peekHeight)
         case .expanded: CGSize(width: Self.expandedWidth, height: expandedHeight)
         }
     }
@@ -181,7 +180,7 @@ final class Island {
         switch mode {
         case .resting, .expanded: BlackParams(width: notchSize.width, height: notchSize.height, radius: 7, ear: 0)
         case .compact: BlackParams(width: Self.pillWidth, height: notchSize.height, radius: notchSize.height / 2, ear: Self.ear)
-        case .peek: BlackParams(width: Self.peekWidth, height: peekHeight, radius: 18, ear: Self.ear)
+        case .peek: BlackParams(width: notchSize.width, height: peekHeight, radius: 14, ear: 0)
         }
     }
 }
