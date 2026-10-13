@@ -68,7 +68,15 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 - Env in hooks: CLAUDE_PID, CLAUDE_CODE_SESSION_ID, CLAUDE_PROJECT_DIR, CLAUDE_CODE_CHILD_SESSION; TERM_PROGRAM is inherited (empty in the desktop app, "Apple_Terminal"/"iTerm.app" in a terminal). Seen empirically: common fields session_id, transcript_path, cwd, scratchpad_dir, prompt_id, permission_mode ("auto"/"default"), effort, hook_event_name; PreToolUse/PostToolUse add tool_name, tool_input, tool_use_id, and agent_id/agent_type when inside a subagent.
 - Hooks are held back until the folder is trusted; `claude -p` treats folders as trusted. Settings edits are picked up live by a file watcher (seen: this session ran the probe hook seconds after settings.local.json was written) — no restart needed.
 - Print mode: PermissionRequest hooks run; with no decision the tool is denied. `--permission-prompts none` exists (2.1.259+). Permission modes: default, acceptEdits, plan, auto, dontAsk, bypassPermissions.
-- Both CLI copies (Terminal 2.1.290, bundled 2.1.295) were logged out on 14 Oct; James logs in Terminal for the scripted tests.
+- Both CLI copies (Terminal 2.1.290, bundled 2.1.295) were logged out on 14 Oct; James logged in Terminal for the scripted tests.
+- **Scripted (Terminal 2.1.290, `claude -p --permission-mode default`, command `touch build/x`):**
+  - no decision from the hook → PermissionRequest fires, tool denied in print mode (Claude asks for approval in text).
+  - PreToolUse `permissionDecision: allow` → **no PermissionRequest at all**, tool runs. (Q1: yes, it skips the prompt.)
+  - PermissionRequest exit 2 with stderr → treated as no decision; tool "blocked pending approval". (Q2: exit 2 never denies; deny only with JSON.)
+  - PermissionRequest deny JSON → denied with our message; allow JSON → PostToolUse 200 ms later, file created.
+- **Desktop app 2.1.295, Manual mode, hook waits 25 s then allows:** PermissionRequest fired 0.3 s after PreToolUse; a `Notification permission_prompt` fired 6 s later, but James saw **no prompt in the app** during the wait; the hook's allow ran the tool. (Q3: the app shows nothing while a PermissionRequest hook is pending, at least on 2.1.295.)
+- `echo hello` never prompts even in Manual: it is on Claude Code's built-in safe list. Tests must use a write such as `touch`.
+- Desktop sessions emit a `SubagentStop` with no `SubagentStart` after every turn (the app's own title/summary agent) → treat SubagentStop for an unknown agent_id as nothing.
 
 ## Steps
 - [x] 1. Mockup artifact (all states, both themes, options A/B/C). Published; James picked B / A / A.
