@@ -1,6 +1,6 @@
 # Cove — plan
 
-**Status (13 Oct 2026):** step 1 done (picks B / A / A). Step 2 skeleton in progress.
+**Status (13 Oct 2026):** steps 1–2 done. Next: step 3, the island shell.
 Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
 Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
 
@@ -57,7 +57,11 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 ## Steps
 - [x] 1. Mockup artifact (all states, both themes, options A/B/C). Published; James picked B / A / A.
   Options offered: Colours A Quiet / B Lifted (rec) / C Crisp. Pill A Wings (rec) / B Chin / C Lobe. Working anim A Walk (rec) / B Wave / C Ring.
-- [ ] 2. Skeleton: package, Makefile (check/run/install/uninstall), cert, menu-bar icon, no Dock icon. Done when `make check` is clean and `make run` shows the icon at 0% CPU.
+- [x] 2. Skeleton: package, Makefile (check/run/install/uninstall), cert, menu-bar icon, no Dock icon. `make check` clean, `make run` launches; 0.0 % CPU, 10 MB.
+  Cert: `scripts/make-cert.sh` makes "Cove Dev" (self-signed, legacy PKCS12, imported with -T codesign). It shows as CSSMERR_TP_NOT_TRUSTED in
+  `security find-identity -v` but codesign signs with it without any prompt and the designated requirement is stable:
+  `identifier "com.jameswebster.cove" and certificate leaf = H"c51892c9…"`. No trust-settings change was needed. Entitlements: none (Hardened Runtime off).
+  Screenshots from Claude still come out black: Screen Recording not granted yet.
 - [ ] 3. Island shell: panel, 4 states, hover/reverse, themes, Theme.swift, Tile view, toolbar, edit mode, Demo menu. Done when screenshots in both themes match the picked drawing.
 - [ ] 4. Hook probe (throwaway hook in `.claude/settings.local.json`): the 4 questions answered in PLAN.md.
 - [ ] 5. Claude status: socket, hook.sh + helper, rows, steps, Working/Done/Waiting/Quiet, agents, process watch, fake-event script, settings.json snippet. Done when fake events drive 3 rows and a real session shows project · branch.
