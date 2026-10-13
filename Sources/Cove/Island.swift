@@ -107,6 +107,7 @@ final class Island {
     let recentApps = RecentApps()
     let volume = VolumeControl()
     let claude = ClaudeModel()
+    let spotifyModel = SpotifyModel()
     var hotKeyAllow = HotKeys.defaultAllow.display
     var hotKeyDeny = HotKeys.defaultDeny.display
 

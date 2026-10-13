@@ -88,6 +88,11 @@ final class IslandController: NSObject {
         host.onExit = { [weak self] in self?.mouseExited() }
         panel.orderFrontRegardless()
 
+        island.spotifyModel.onChange = { [weak self] in
+            guard let self, !self.island.demo else { return }
+            self.island.spotify = self.island.spotifyModel.track
+            if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
+        }
         island.claude.onPeek = { [weak self] content, seconds in self?.showPeek(content, seconds: seconds) }
         island.claude.onChanged = { [weak self] in self?.claudeChanged() }
         island.claude.onCardsChanged = { [weak self] in self?.cardsChanged() }
@@ -193,6 +198,7 @@ final class IslandController: NSObject {
     func expand() {
         guard island.mode != .expanded else { return }
         island.volume.refresh()
+        if !island.demo { island.spotifyModel.islandOpened() }
         haptic()
         show(.expanded, animation: Self.openAnimation, settle: 0.55)
     }
@@ -266,7 +272,8 @@ final class IslandController: NSObject {
     }
 
     func spotify(_ command: SpotifyCommand) {
-        // Wired to Spotify in step 7.
+        guard !island.demo else { return }
+        island.spotifyModel.send(command)
     }
 
     private func haptic() {
@@ -338,6 +345,7 @@ final class IslandController: NSObject {
         pendingPeekSeconds = nil
         island.demo = false
         island.claude.setDemoSessions([])
+        island.spotify = island.spotifyModel.track
         island.editing = false
         island.compact = nil
         island.peek = nil

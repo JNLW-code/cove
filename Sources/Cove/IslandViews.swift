@@ -408,7 +408,10 @@ struct TileView: View {
         let p = island.palette
         switch kind {
         case .spotify:
-            if let track = island.spotify { SpotifyTileContent(track: track, palette: p, actions: actions) }
+            if let track = island.spotify {
+                SpotifyTileContent(track: track, palette: p, actions: actions, live: !island.demo && !island.reduceMotion,
+                                   progress: { [spotifyModel = island.spotifyModel] in spotifyModel.progress })
+            }
         case .weather:
             if let weather = island.weather { WeatherTileContent(weather: weather, palette: p) }
         case .calendar:
@@ -423,6 +426,16 @@ struct SpotifyTileContent: View {
     let track: SpotifyTrack
     let palette: Palette
     let actions: IslandActions
+    /// Live progress from the Spotify model (false in Demo, where the sample value is shown).
+    var live = false
+    var progress: () -> Double = { 0 }
+
+    private func progressBar(_ value: Double) -> some View {
+        ZStack(alignment: .leading) {
+            Capsule().fill(palette.quaternaryLabel)
+            Capsule().fill(palette.secondaryLabel).frame(width: max(0, min(1, value)) * 81)
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -443,9 +456,12 @@ struct SpotifyTileContent: View {
                 .lineLimit(1).frame(width: 85, alignment: .leading).offset(x: 77, y: 15)
             Text(track.artist).font(Theme.font(12)).foregroundStyle(palette.secondaryLabel)
                 .lineLimit(1).frame(width: 85, alignment: .leading).offset(x: 77, y: 32)
-            ZStack(alignment: .leading) {
-                Capsule().fill(palette.quaternaryLabel)
-                Capsule().fill(palette.secondaryLabel).frame(width: max(0, min(1, track.progress)) * 81)
+            Group {
+                if track.playing && live {
+                    TimelineView(.periodic(from: .now, by: 1)) { _ in progressBar(progress()) }
+                } else {
+                    progressBar(track.progress)
+                }
             }
             .frame(width: 81, height: 2).offset(x: 77, y: 53)
             HStack(spacing: 16) {
