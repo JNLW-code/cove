@@ -1,6 +1,6 @@
 # Cove — plan
 
-**Status (14 Oct 2026):** steps 1–3 done and seen in screenshots (both themes). Next: step 4, the hook probe.
+**Status (14 Oct 2026):** steps 1–4 done. Next: step 5, Claude status (socket, hook script + helper, rows).
 Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
 Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
 
@@ -76,6 +76,9 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   - PermissionRequest deny JSON → denied with our message; allow JSON → PostToolUse 200 ms later, file created.
 - **Desktop app 2.1.295, Manual mode, hook waits 25 s then allows:** PermissionRequest fired 0.3 s after PreToolUse; a `Notification permission_prompt` fired 6 s later, but James saw **no prompt in the app** during the wait; the hook's allow ran the tool. (Q3: the app shows nothing while a PermissionRequest hook is pending, at least on 2.1.295.)
 - `echo hello` never prompts even in Manual: it is on Claude Code's built-in safe list. Tests must use a write such as `touch`.
+- **Desktop app, hook returns no decision:** the app's own prompt ("Do you want to proceed? 1. Yes…") appears within a second; James's Yes ran the tool (PostToolUse). So the app only prompts once the hook has finished without a decision.
+- **Phone (Remote Control) while the hook waits:** not tested. Docs: host prompt and hooks run alongside each other, first decision wins. Design for it anyway: a PostToolUse (or PermissionDenied) for the same tool_use clears the card and the hook exits 0 with no output.
+- `TERM_PROGRAM` is `claude-desktop` in desktop-app sessions (empty on the very first events of a session), `Apple_Terminal` in Terminal.
 - Desktop sessions emit a `SubagentStop` with no `SubagentStart` after every turn (the app's own title/summary agent) → treat SubagentStop for an unknown agent_id as nothing.
 
 ## Steps
@@ -96,7 +99,7 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   /code-review (8 findings) fixed 13 Oct: pin leak, sample data leaking out of Demo, palette cached per theme, shadow timing, peeks queued while open, edit-mode unpin, drag persists once.
   Dev control channel for testing: `notifyutil -p com.jameswebster.cove.<cmd>` with cmd in theme.dark|theme.light|theme.system|demo.toggle|demo.next|
   show.resting|show.compact|show.peek|show.expanded|edit.toggle|pin.toggle (Darwin notify, public API; it only changes what is shown).
-- [ ] 4. Hook probe (throwaway hook in `.claude/settings.local.json`): the 4 questions answered in PLAN.md.
+- [x] 4. Hook probe done 14 Oct (throwaway hook removed). Answers: (1) PreToolUse allow skips the prompt entirely. (2) Exit 2 in PermissionRequest does nothing; deny only by JSON. (3) The desktop app shows no prompt while a PermissionRequest hook is pending; it prompts only after the hook returns without a decision. (4) Answering first in the app can't happen while our hook waits; the phone case is untested, handled by clearing the card on PostToolUse.
 - [ ] 5. Claude status: socket, hook.sh + helper, rows, steps, Working/Done/Waiting/Quiet, agents, process watch, fake-event script, settings.json snippet. Done when fake events drive 3 rows and a real session shows project · branch.
 - [ ] 6. Permission card: Allow/Deny, queue, hotkeys, 400 ms guard, long-command box, fail open, 60 s, Allowed/Denied, question/plan, blocked peek. Done when a real request is answered from the island and /security-review is clean.
 - [ ] 7. Spotify tile (art, title, artist, prev/play/next, progress) + Automation tick.
