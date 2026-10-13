@@ -111,7 +111,7 @@ final class IslandController: NSObject {
         let target = frame(for: mode)
         let union = panel.frame.union(target)
         if union != panel.frame { panel.setFrame(union, display: true) }
-        if mode != .resting { panel.hasShadow = true }
+        if mode == .expanded { panel.hasShadow = true }
         if let animation, !island.reduceMotion {
             withAnimation(animation) { island.mode = mode }
         } else {
@@ -123,7 +123,7 @@ final class IslandController: NSObject {
             try? await Task.sleep(for: .milliseconds(Int(settle * 1000)), tolerance: .milliseconds(20))
             guard !Task.isCancelled, let self, self.island.mode == mode else { return }
             self.panel.setFrame(target, display: true)
-            self.panel.hasShadow = mode != .resting
+            self.panel.hasShadow = mode == .expanded
             self.panel.invalidateShadow()
         }
     }

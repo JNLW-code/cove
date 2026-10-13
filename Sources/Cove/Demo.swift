@@ -16,13 +16,13 @@ enum Demo {
         return FileManager.default.fileExists(atPath: path) ? NSWorkspace.shared.icon(forFile: path) : nil
     }
 
-    static let dnd = PeekContent(symbol: "moon.fill", icon: nil, tint: .focus, word: "Do Not Disturb", second: nil, edge: nil)
+    static let dnd = PeekContent(symbol: "moon.fill", icon: nil, tint: .focus, word: "Do Not Disturb", second: nil)
     static var slack: PeekContent {
-        PeekContent(symbol: "app.fill", icon: appIcon("Slack"), tint: nil, word: "Slack opened", second: nil, edge: nil)
+        PeekContent(symbol: "app.fill", icon: appIcon("Slack"), tint: nil, word: "Slack opened", second: nil)
     }
-    static let charging = PeekContent(symbol: "bolt.fill", icon: nil, tint: .done, word: "Charging", second: nil, edge: .done)
+    static let charging = PeekContent(symbol: "bolt.fill", icon: nil, tint: .done, word: "Charging", second: nil)
     static let blocked = PeekContent(symbol: "exclamationmark.triangle", icon: nil, tint: .blocked,
-                                     word: "Blocked · quoteflow-v3", second: "rm -rf .next", edge: .blocked)
+                                     word: "Blocked · quoteflow-v3", second: "rm -rf .next")
 
     static func fill(_ island: Island) {
         island.spotify = track

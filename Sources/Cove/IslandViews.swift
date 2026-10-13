@@ -75,25 +75,11 @@ struct IslandRoot: View {
             }
             BlackShape(params: params)
                 .fill(.black)
-                .overlay(alignment: .bottom) {
-                    if let edge = edgeTint {
-                        Rectangle().fill(island.palette.color(edge)).frame(height: 1)
-                    }
-                }
-                .clipShape(BlackShape(params: params))
                 .overlay(alignment: .top) { blackContent }
                 .frame(width: params.width + 2 * params.ear, height: params.height)
                 .zIndex(2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    private var edgeTint: Tint? {
-        switch island.mode {
-        case .compact: island.compact?.tint
-        case .peek: island.peek?.edge
-        default: nil
-        }
     }
 
     @ViewBuilder private var blackContent: some View {

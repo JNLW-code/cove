@@ -64,7 +64,6 @@ struct PeekContent: Equatable {
     var tint: Tint?
     var word: String
     var second: String?
-    var edge: Tint?
 }
 
 /// The black shape that grows out of the notch, in points.

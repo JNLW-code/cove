@@ -42,6 +42,7 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   `com.spotify.client.PlaybackStateChanged`; controls/artwork/position via AppleScript only while open and only if Spotify runs.
   Artwork comes from Spotify's own CDN (`artwork url`), cached locally. That is one more outbound request (to Spotify) — flagged to James.
 - Clicking a Claude row brings Claude forward and closes the island.
+- No coloured edge on the black shapes (James, 13 Oct): pill and peeks are pure black like the notch; status colour lives only in the icon/grid. No window shadow on them either, only on the open island.
 - Mockup picks (13 Oct): **Colours B Lifted** (dark: island underPageBackground #282828, tiles secondarySystemFill → #383838; light: island windowBackground #FFFFFF, tiles → #EBEBEB; Deny = unemphasizedSelectedContentBackground). **Pill A Wings** (two lobes level with the menu bar, 371 × 32). **Working animation A Walk** (3 accent cells wander on the 5×5 grid, one move per 300 ms, only while working and visible).
 
 ## Measurements from the refs (pt, notch = 179 pt wide)
