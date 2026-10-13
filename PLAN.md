@@ -56,6 +56,20 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 - Real macOS 26 colours (sRGB): dark window/control bg #1E1E1E, underPage #282828, fills = white at 10/8/5/3/1 %, label white 85/55/25 %,
   separator white 10 %, accent #007AFF, orange #FF9230, green #30D158, red #FF4245. Light: window #FFFFFF, fills black at 10/8/5/3/1 %, label black 85/50/26 %.
 
+## Step 4 findings — hooks (docs checked 14 Oct 2026, code.claude.com/docs/en/hooks; empirical bits marked)
+- PermissionRequest fires only when Claude is about to ask (or would auto-deny in a session that can't prompt). Not for auto-mode classifier blocks: those are **PermissionDenied** (auto mode only; fields tool_name, tool_input, tool_use_id, reason).
+- **Exit 2 is ignored for PermissionRequest** ("permission flow proceeds unchanged", stderr discarded) → deny only with the JSON decision. Allow/deny JSON shapes as in PROMPT.md; deny may add `"interrupt": true`.
+- Default hook timeout 600 s; per-hook `"timeout"` in seconds. Ours: PermissionRequest 75, helper gives up at 60. `onFailure` needs 2.1.295, so not relied on.
+- Desktop app / Remote Control (canUseTool host): docs say the host's prompt and the hooks "run alongside… whichever decides first applies" → the app shows its own prompt at the same time; first answer wins. (James's live test confirms what the losing hook sees.)
+- PreToolUse `permissionDecision: "allow"` skips the prompt (except never-auto-approved actions, network paths, AskUserQuestion/ExitPlanMode). PreToolUse stays status-only for us.
+- Stop input has `last_assistant_message` (and `stop_hook_active`) → "ends with ?" needs no transcript reading. SubagentStart/Stop carry `agent_id`, `agent_type`.
+- SessionStart `source`: startup | resume | clear | compact | fork; `session_title` only when set (--name, /rename), else absent → fall back to folder name. SessionEnd `reason`: clear | resume | logout | prompt_input_exit | other; **/clear sends SessionEnd** then SessionStart(clear). SessionEnd hook budget 1.5 s by default (our 2 s timeout is fine).
+- Notification `notification_type`: permission_prompt (~6 s after the prompt), idle_prompt (~60 s after Claude stops), agent_needs_input, agent_completed, …
+- Env in hooks: CLAUDE_PID, CLAUDE_CODE_SESSION_ID, CLAUDE_PROJECT_DIR, CLAUDE_CODE_CHILD_SESSION; TERM_PROGRAM is inherited (empty in the desktop app, "Apple_Terminal"/"iTerm.app" in a terminal). Seen empirically: common fields session_id, transcript_path, cwd, scratchpad_dir, prompt_id, permission_mode ("auto"/"default"), effort, hook_event_name; PreToolUse/PostToolUse add tool_name, tool_input, tool_use_id, and agent_id/agent_type when inside a subagent.
+- Hooks are held back until the folder is trusted; `claude -p` treats folders as trusted. Settings edits are picked up live by a file watcher (seen: this session ran the probe hook seconds after settings.local.json was written) — no restart needed.
+- Print mode: PermissionRequest hooks run; with no decision the tool is denied. `--permission-prompts none` exists (2.1.259+). Permission modes: default, acceptEdits, plan, auto, dontAsk, bypassPermissions.
+- Both CLI copies (Terminal 2.1.290, bundled 2.1.295) were logged out on 14 Oct; James logs in Terminal for the scripted tests.
+
 ## Steps
 - [x] 1. Mockup artifact (all states, both themes, options A/B/C). Published; James picked B / A / A.
   Options offered: Colours A Quiet / B Lifted (rec) / C Crisp. Pill A Wings (rec) / B Chin / C Lobe. Working anim A Walk (rec) / B Wave / C Ring.
