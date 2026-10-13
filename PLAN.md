@@ -1,6 +1,6 @@
 # Cove — plan
 
-**Status (14 Oct 2026):** steps 1–4 done. Next: step 5, Claude status (socket, hook script + helper, rows).
+**Status (14 Oct 2026, overnight run):** steps 1–6 done. Working through 7–12 without James. Blocked on James: 5b (paste hooks/settings-snippet.json into ~/.claude/settings.json), Spotify Automation and Calendar permission prompts when those tiles first load.
 Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
 Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
 
@@ -102,7 +102,9 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 - [x] 4. Hook probe done 14 Oct (throwaway hook removed). Answers: (1) PreToolUse allow skips the prompt entirely. (2) Exit 2 in PermissionRequest does nothing; deny only by JSON. (3) The desktop app shows no prompt while a PermissionRequest hook is pending; it prompts only after the hook returns without a decision. (4) Answering first in the app can't happen while our hook waits; the phone case is untested, handled by clearing the card on PostToolUse.
 - [x] 5. Claude status (14 Oct): socket (`ClaudeSocket.swift`, 0700 dir, peer uid checked), `cove-hook` helper + `hooks/hook.sh`, `hooks/settings-snippet.json`, rows/steps/Done/Waiting/Quiet/agents/process watch (`ClaudeModel.swift`), strip + cards (`ClaudeViews.swift`), `scripts/fake-events.sh` (`make fake`). Fake events drive 3 rows, the Done card and the pill; screenshots match the mockup. Real session check: see step 5b.
 - [ ] 5b. James pastes `hooks/settings-snippet.json` into ~/.claude/settings.json, then a real session shows project · branch.
-- [ ] 6. Permission card: Allow/Deny, queue, hotkeys, 400 ms guard, long-command box, fail open, 60 s, Allowed/Denied, question/plan, blocked peek. Done when a real request is answered from the island and /security-review is clean.
+- [x] 6. Permission card (14 Oct): `PermissionCardView` (ref 2), Allow/Deny pills, Carbon hot keys ⌃⌥Y/⌃⌥N registered only while a card shows (`HotKeys.swift`), queue with "1 of N", 400 ms guard, long commands in a 128 pt monospace scroll box with Allow off until scrolled to the end (shortcut path refuses too), Allowed/Denied peeks, question/plan card with Open, blocked peek. The island opens itself on a request and stays open until answered.
+  Verified with the real helper: allow → helper prints the allow JSON; deny → deny JSON; settled by Stop → no output; 3 s timeout → no output; app down → instant exit 0. Real end-to-end answer needs step 5b (James's settings.json paste).
+  /code-review (6 findings) fixed. /security-review: no high or medium findings. Notes: any same-user process can connect to the socket or post the notify dev commands, but neither path can approve anything (approval is only the app's own buttons/hot keys, replies go only down the requesting hook's own connection, the helper prints fixed JSON). `test.allow/deny` exist only when launched with COVE_UI_TEST=1, which `make run`/`install` never set. Commands are held in memory only and never logged.
 - [ ] 7. Spotify tile (art, title, artist, prev/play/next, progress) + Automation tick.
 - [ ] 8. Weather tile (Open-Meteo), city in menu, one-shot refresh.
 - [ ] 9. Calendar tile (EventKit full access) + 25-min timer.
