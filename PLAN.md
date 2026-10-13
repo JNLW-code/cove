@@ -127,12 +127,13 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 - **Reply box** on the Done card. Two deliveries: (1) when Claude's message ends with "?", the Stop hook keeps its connection open up to 45 s (`COVE_HOOK_WAIT_STOP`) and a typed reply goes back as `{"decision":"block","reason":"<text>"}`, so Claude carries on with it; the hook lets go when the card is dismissed, the session ends, or James is away. (2) Otherwise Cove opens the exact session and pastes the text + Return (Accessibility permission, desktop sessions only; `Typist.swift`). Stop hook timeout raised to 60 in the snippet (James re-copied settings-merged.json).
 - The panel can now become key (non-activating, so the app is never activated) so the reply box takes typing; focus is handed back to the previous app after sending.
 
+- Context % on each row (14 Oct): the helper reads GSD's `claude-ctx-<session>.json` when it exists (Terminal), else the last `usage` block in the transcript's tail (input + cache tokens), on Stop and UserPromptSubmit. The app divides by 1,000,000 when `~/.claude/settings.json` has a `[1m]` model (or the count is already past 200k), else 200,000. Amber at 80 %, red at 90 %.
+- Tiles are centred when fewer than four show.
+
 ## Later
 - Chips row from ref 5: YouTube, Window, Messages, Clipboard, Tray, Recents, Mac.
 - Do Not Disturb peek. Options for James to pick: (a) watch `~/Library/DoNotDisturb/DB/Assertions.json` with a DispatchSource (no polling) — needs Full Disk Access for Cove; (b) a paid Apple team to use INFocusStatusCenter; (c) leave it out.
-- Context %: GSD's claude-ctx file only exists for Terminal sessions; may be estimated from the transcript.
 - Folder / tray shelf and the apps grid from the toolbar.
 - Brightness and AirPlay (no public API).
 - A shortcut recorder (any key combo) instead of the four presets.
-- Tiles row centred or sized to its contents when fewer than four tiles show (today the island keeps its 662 pt width).
 - The three `onChange` copy closures in `IslandController` could become one computed override per tile.
