@@ -9,8 +9,12 @@ final class DevCommands {
                         "show.resting", "show.compact", "show.peek", "show.expanded", "open", "close", "edit.toggle", "pin.toggle"]
     private var tokens: [Int32] = []
 
+    /// Only when launched with COVE_UI_TEST=1 (never by `make run` or the installed app): answer the front card.
+    static let testOnly = ["test.allow", "test.deny"]
+
     init(handler: @escaping @MainActor @Sendable (String) -> Void) {
-        for name in Self.names {
+        let names = ProcessInfo.processInfo.environment["COVE_UI_TEST"] == "1" ? Self.names + Self.testOnly : Self.names
+        for name in names {
             var token: Int32 = 0
             notify_register_dispatch("com.jameswebster.cove.\(name)", &token, DispatchQueue.main) { _ in
                 MainActor.assumeIsolated { handler(name) }

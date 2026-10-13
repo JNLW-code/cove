@@ -56,8 +56,7 @@ ev PostToolUse $A "\"tool_name\":\"Bash\",\"tool_use_id\":\"t8\",\"input_key\":\
 ev Stop $A "\"ends_with_question\":false" 2
 if [ "$MODE" = rows ]; then echo "rows only, keeping the sessions"; exit 0; fi
 echo "== A: a 500-line command through the real helper (app up: card until settled by Stop)"
-LONG=$(for i in $(seq 1 500); do printf 'line %d: psql "$DATABASE_URL" -c "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS note_%d text;"\\n' $i $i; done)
-printf '{"session_id":"%s","cwd":"/Users/jameswebster/Desktop/quoteflow-v3","permission_mode":"default","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"%s"}}' "$A" "$LONG" > /tmp/cove-perm.json
+python3 -c 'import json,sys; cmd="\n".join(f"line {i}: psql \"$DATABASE_URL\" -c \"ALTER TABLE quotes ADD COLUMN IF NOT EXISTS note_{i} text;\"" for i in range(1,501)); print(json.dumps({"session_id":sys.argv[1],"cwd":"/Users/jameswebster/Desktop/quoteflow-v3","permission_mode":"default","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":cmd}}))' "$A" > /tmp/cove-perm.json
 ( COVE_HOOK_WAIT=20 "$HELPER" PermissionRequest < /tmp/cove-perm.json > /tmp/cove-perm.out; echo "helper (app up, settled by Stop) exit $? output: $(cat /tmp/cove-perm.out)" ) &
 sleep 4
 ev Stop $A "\"ends_with_question\":false" 2

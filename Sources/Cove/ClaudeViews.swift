@@ -135,9 +135,17 @@ struct ClaudeCard: View {
     let actions: IslandActions
 
     var body: some View {
+        if let card = island.claude.frontCard {
+            PermissionCardView(card: card, session: session, island: island, actions: actions)
+        } else {
+            statusCard
+        }
+    }
+
+    private var statusCard: some View {
         let p = island.palette
         let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
-        ZStack(alignment: .leading) {
+        return ZStack(alignment: .leading) {
             shape.fill(p.tile).overlay(shape.strokeBorder(edge(p), lineWidth: 1))
             HStack(spacing: 0) {
                 grid(p).padding(.leading, 20)
@@ -205,5 +213,87 @@ struct ClaudeCard: View {
         case .needsYou(.askingInApp): return "The island could not take this one"
         default: return ""
         }
+    }
+}
+
+/// Ref 2: amber grid, "Claude needs your OK", the command, project and branch, Allow and Deny stacked on the right.
+/// Long commands open in a scrolling monospace box; Allow turns on once you have scrolled to the end.
+struct PermissionCardView: View {
+    let card: PermissionCard
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+    @State private var scrolledToEnd = false
+
+    var body: some View {
+        let p = island.palette
+        let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
+        let long = Island.isLong(card.command)
+        let allowOn = long ? scrolledToEnd : true
+        ZStack(alignment: .leading) {
+            shape.fill(p.tile).overlay(shape.strokeBorder(p.needsYou, lineWidth: 1))
+            HStack(alignment: long ? .top : .center, spacing: 0) {
+                StatusGrid(size: 32, kind: .needsYou, palette: p)
+                    .padding(.leading, 20)
+                    .padding(.top, long ? 24 : 0)
+                VStack(alignment: .leading, spacing: long ? 6 : 4) {
+                    HStack(spacing: 8) {
+                        Text("Claude needs your OK").font(Theme.font(14, .bold)).foregroundStyle(p.label)
+                        if island.claude.cards.count > 1 {
+                            Text("1 of \(island.claude.cards.count)").font(Theme.font(11)).foregroundStyle(p.tertiaryLabel)
+                        }
+                    }
+                    if long {
+                        ScrollView(.vertical) {
+                            Text(card.command).font(Theme.mono(12)).foregroundStyle(p.label)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 10).padding(.vertical, 8)
+                                .textSelection(.enabled)
+                        }
+                        .frame(height: Island.longCommandBox - 8)
+                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                        .onScrollGeometryChange(for: Bool.self) { geometry in
+                            geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 2
+                        } action: { _, atEnd in
+                            if atEnd { scrolledToEnd = true; island.claude.frontCardFullySeen = true }
+                        }
+                        Text(scrolledToEnd ? "Full command seen · \(lines) lines" : "Scroll to the end to turn on Allow · \(lines) lines")
+                            .font(Theme.font(11)).foregroundStyle(p.tertiaryLabel)
+                    } else {
+                        Text(card.command).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1).truncationMode(.tail)
+                    }
+                    Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+                }
+                .padding(.leading, 20)
+                .padding(.vertical, long ? 18 : 0)
+                Spacer(minLength: 12)
+                VStack(spacing: 6) {
+                    pill("Allow", island.hotKeyAllow, p.allowBackground, p.allowText, on: allowOn && !island.claude.frontCardGuarded) { actions.answer(card, allow: true) }
+                    pill("Deny", island.hotKeyDeny, p.deny, p.label, on: true) { actions.answer(card, allow: false) }
+                }
+                .padding(.trailing, 20)
+                .padding(.top, long ? 24 : 0)
+            }
+        }
+        .frame(width: Island.expandedWidth - 46, height: island.cardHeight)
+        .id(card.id)
+    }
+
+    private var lines: Int { card.command.filter { $0 == "\n" }.count + 1 }
+
+    private func pill(_ title: String, _ key: String, _ bg: Color, _ fg: Color, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Text(title).font(Theme.font(13, .semibold))
+                Text(key).font(Theme.font(10.5)).opacity(0.55)
+            }
+            .foregroundStyle(fg)
+            .frame(width: 85, height: 30)
+            .background(Capsule().fill(bg))
+        }
+        .buttonStyle(PressStyle())
+        .disabled(!on)
+        .opacity(on ? 1 : 0.35)
     }
 }

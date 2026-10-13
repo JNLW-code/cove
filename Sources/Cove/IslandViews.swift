@@ -12,7 +12,7 @@ final class IslandActions {
     func openMenu() { controller?.openMenu() }
     func open(_ app: RecentApps.Entry) { controller?.island.recentApps.open(app) }
     func rowClicked(_ session: ClaudeSession) { controller?.rowClicked(session) }
-    func answer(_ card: PermissionCard, allow: Bool) { controller?.island.claude.answer(card, allow: allow) }
+    func answer(_ card: PermissionCard, allow: Bool) { controller?.answer(card, allow: allow) }
     func spotify(_ command: SpotifyCommand) { controller?.spotify(command) }
 }
 

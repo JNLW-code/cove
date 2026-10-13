@@ -107,6 +107,8 @@ final class Island {
     let recentApps = RecentApps()
     let volume = VolumeControl()
     let claude = ClaudeModel()
+    var hotKeyAllow = HotKeys.defaultAllow.display
+    var hotKeyDeny = HotKeys.defaultDeny.display
 
     init() {
         let defaults = UserDefaults.standard
@@ -170,12 +172,25 @@ final class Island {
 
     /// The session whose card takes over the island: needs you, or a Done not yet seen.
     var cardSession: ClaudeSession? {
+        if let card = claude.frontCard, let s = claude.session(card.sessionID) { return s }
         guard let s = claude.mostUrgent else { return nil }
         return s.needsYou != nil || s.unseenDone ? s : nil
     }
 
+    static let longCommandBox: CGFloat = 128
+
+    /// A command that needs the scrolling box: more than 2 lines or longer than one line of the card.
+    static func isLong(_ command: String) -> Bool {
+        command.filter { $0 == "\n" }.count >= 2 || command.count > 110
+    }
+
+    var cardHeight: CGFloat {
+        if let card = claude.frontCard, Self.isLong(card.command) { return Self.cardHeight + Self.longCommandBox }
+        return Self.cardHeight
+    }
+
     var expandedHeight: CGFloat {
-        if cardSession != nil { return notchSize.height + 18 + Self.cardHeight + 18 }
+        if cardSession != nil { return notchSize.height + 18 + cardHeight + 18 }
         let rows = claude.sessions.count
         let strip: CGFloat = rows > 0 ? CGFloat(rows) * Self.rowHeight + 8 : 0
         let tiles: CGFloat = visibleTiles.isEmpty ? 0 : 94 + 18

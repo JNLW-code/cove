@@ -127,6 +127,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "close": controller.collapse()
         case "edit.toggle": controller.toggleEdit()
         case "pin.toggle": controller.togglePin()
+        case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
+        case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         default: break
         }
     }

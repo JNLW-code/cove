@@ -44,7 +44,7 @@ struct ClaudeStep: Equatable, Sendable {
     static func fromCommand(_ command: String) -> ClaudeStep {
         let c = command.lowercased()
         func has(_ needles: String...) -> Bool { needles.contains { c.contains($0) } }
-        if has("gh pr checks", "gh run watch", "gh run view", "sleep ") { return .waitingCI }
+        if has("gh pr checks", "gh run watch", "gh run view") || c.hasPrefix("sleep ") { return .waitingCI }
         if has("git ", "gh ") { return .git }
         if has("playwright", "vitest", "jest", "pytest", "npm test", "npm run test", "swift test", "xcodebuild test") { return .testing }
         if has("tsc", "npm run check", "eslint", "npm run lint", "swiftlint", "make check", "codesign") { return .checking }
@@ -176,6 +176,20 @@ final class ClaudeModel {
     var onCardSettled: ((PermissionCard) -> Void)?
     /// Called after every change so the controller can refresh the pill.
     var onChanged: (() -> Void)?
+    /// Called when a new card arrives or the front card changes.
+    var onCardsChanged: (() -> Void)?
+    /// The 400 ms after a card appears or moves on, during which clicks and shortcuts are ignored.
+    static let guardSeconds: TimeInterval = 0.4
+    var frontCardShownAt = Date.distantPast
+    /// True once the whole command of the front card has been on screen (short ones at once, long ones when scrolled to the end).
+    var frontCardFullySeen = false
+    /// Allow is only possible when the full command has been seen; Deny always is.
+    var frontCardAllowReady: Bool {
+        guard let card = frontCard else { return false }
+        return !Island.isLong(card.command) || frontCardFullySeen
+    }
+    var frontCard: PermissionCard? { cards.first }
+    var frontCardGuarded: Bool { Date().timeIntervalSince(frontCardShownAt) < Self.guardSeconds }
     var socket: ClaudeSocket?
 
     private var quietTasks: [String: Task<Void, Never>] = [:]
@@ -271,6 +285,8 @@ final class ClaudeModel {
             cards.append(PermissionCard(id: requestID, sessionID: s.id, agentID: agent, tool: tool,
                                         inputKey: m.string("input_key"), command: command, received: Date()))
             s.state = .needsYou(.permission)
+            if cards.count == 1 { frontCardShownAt = Date(); frontCardFullySeen = false }
+            onCardsChanged?()
         default:
             break
         }
@@ -338,11 +354,13 @@ final class ClaudeModel {
             return card.agentID == agent && card.inputKey == inputKey
         }
         guard !settled.isEmpty else { return }
+        let front = cards.first?.id
         cards.removeAll { c in settled.contains { $0.id == c.id } }
         for card in settled {
             socket?.close(request: card.id)
             onCardSettled?(card)
         }
+        if cards.first?.id != front { frontCardShownAt = Date(); frontCardFullySeen = false; onCardsChanged?() }
         if let s = session(sessionID), !cards.contains(where: { $0.sessionID == sessionID }), s.needsYou == .permission {
             s.state = s.inFlight.isEmpty ? .idle : .working(s.inFlight.values.first?.step ?? .running)
         }
@@ -352,8 +370,11 @@ final class ClaudeModel {
         socket?.reply(to: card.id, decision: allow ? "allow" : "deny")
         cards.removeAll { $0.id == card.id }
         if let s = session(card.sessionID), !cards.contains(where: { $0.sessionID == s.id }) {
-            s.state = .working(.running)
+            s.state = allow ? .working(.running) : .idle
         }
+        frontCardShownAt = Date()
+        frontCardFullySeen = false
+        onCardsChanged?()
         onChanged?()
     }
 
@@ -362,6 +383,9 @@ final class ClaudeModel {
         guard let card = cards.first(where: { $0.id == requestID }) else { return }
         cards.removeAll { $0.id == requestID }
         if let s = session(card.sessionID), !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp) }
+        frontCardShownAt = Date()
+        frontCardFullySeen = false
+        onCardsChanged?()
         onChanged?()
     }
 
