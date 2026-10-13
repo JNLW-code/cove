@@ -1,7 +1,8 @@
 # Cove — plan
 
-**Status (13 Oct 2026):** plan OK'd. Step 1 (mockup) in progress.
-Done: refs saved, Mac checked, plan written, measurements taken. Left: steps 1–12. Blocked: Screen Recording for Claude (James grants).
+**Status (13 Oct 2026):** mockup published, waiting for James's picks (colour set, pill, working animation).
+Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
+Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
 
 ## What it is
 Cove is a menu-bar app (no Dock icon) that draws a black "Dynamic Island" over the MacBook notch.
@@ -53,7 +54,8 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   separator white 10 %, accent #007AFF, orange #FF9230, green #30D158, red #FF4245. Light: window #FFFFFF, fills black at 10/8/5/3/1 %, label black 85/50/26 %.
 
 ## Steps
-- [ ] 1. Mockup artifact (all states, both themes, options A/B/C). Done when James has picked.
+- [~] 1. Mockup artifact (all states, both themes, options A/B/C). Published; done when James has picked.
+  Options offered: Colours A Quiet / B Lifted (rec) / C Crisp. Pill A Wings (rec) / B Chin / C Lobe. Working anim A Walk (rec) / B Wave / C Ring.
 - [ ] 2. Skeleton: package, Makefile (check/run/install/uninstall), cert, menu-bar icon, no Dock icon. Done when `make check` is clean and `make run` shows the icon at 0% CPU.
 - [ ] 3. Island shell: panel, 4 states, hover/reverse, themes, Theme.swift, Tile view, toolbar, edit mode, Demo menu. Done when screenshots in both themes match the picked drawing.
 - [ ] 4. Hook probe (throwaway hook in `.claude/settings.local.json`): the 4 questions answered in PLAN.md.
