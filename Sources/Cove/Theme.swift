@@ -1,85 +1,91 @@
 import AppKit
+import SwiftUI
 
 /// Which look the island uses. `system` follows the macOS appearance.
 enum ThemeMode: String, CaseIterable, Sendable {
     case dark, light, system
 }
 
-/// Every colour and font the app draws comes from here. Colours are macOS system colours,
-/// resolved through the chosen appearance so the island theme is independent of macOS's own.
-/// Colour set "B Lifted" from the mockup.
+/// Status tints. Working = accent, needs you = orange, done = green, blocked = red, focus = indigo (Do Not Disturb).
+enum Tint: Sendable {
+    case accent, needsYou, done, blocked, focus
+}
+
+/// Every colour the island draws, resolved for one theme. Colour set "B Lifted" from the mockup.
+struct Palette {
+    let isDark: Bool
+    let island, tile, rim, deny, allowBackground, allowText: Color
+    let label, secondaryLabel, tertiaryLabel, quaternaryLabel: Color
+    let accent, needsYou, done, blocked, focus: Color
+    /// Anything drawn on the black notch shape uses these (dark appearance) in both themes.
+    let onBlackLabel, onBlackSecondary, onBlackTertiary, onBlackQuaternary: Color
+
+    func color(_ tint: Tint) -> Color {
+        switch tint {
+        case .accent: accent
+        case .needsYou: needsYou
+        case .done: done
+        case .blocked: blocked
+        case .focus: focus
+        }
+    }
+}
+
+/// All colour and font lookups live here. Colours are macOS system colours, resolved through the
+/// chosen NSAppearance so the island theme is independent of macOS's own appearance.
 @MainActor
 enum Theme {
-    static var mode: ThemeMode = .dark
-
-    /// The appearance colours are resolved through.
-    static var appearance: NSAppearance {
+    static func appearance(for mode: ThemeMode) -> NSAppearance {
         switch mode {
-        case .dark: return NSAppearance(named: .darkAqua) ?? NSApp.effectiveAppearance
-        case .light: return NSAppearance(named: .aqua) ?? NSApp.effectiveAppearance
-        case .system: return NSApp.effectiveAppearance
+        case .dark: NSAppearance(named: .darkAqua) ?? NSApp.effectiveAppearance
+        case .light: NSAppearance(named: .aqua) ?? NSApp.effectiveAppearance
+        case .system: NSApp.effectiveAppearance
         }
     }
 
-    static var isDark: Bool {
-        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    static func palette(_ mode: ThemeMode) -> Palette {
+        let app = appearance(for: mode)
+        let isDark = app.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let dark = NSAppearance(named: .darkAqua) ?? app
+        let opposite = NSAppearance(named: isDark ? .aqua : .darkAqua) ?? app
+        func c(_ color: NSColor, _ a: NSAppearance = app) -> Color { Color(nsColor: resolve(color, in: a)) }
+        let islandColor = resolve(isDark ? .underPageBackgroundColor : .windowBackgroundColor, in: app)
+        return Palette(
+            isDark: isDark,
+            island: Color(nsColor: islandColor),
+            tile: Color(nsColor: blend(resolve(.secondarySystemFill, in: app), over: islandColor)),
+            rim: c(.separatorColor),
+            deny: c(.unemphasizedSelectedContentBackgroundColor),
+            allowBackground: c(.windowBackgroundColor, opposite),
+            allowText: c(.labelColor, opposite),
+            label: c(.labelColor), secondaryLabel: c(.secondaryLabelColor),
+            tertiaryLabel: c(.tertiaryLabelColor), quaternaryLabel: c(.quaternaryLabelColor),
+            accent: c(.controlAccentColor), needsYou: c(.systemOrange), done: c(.systemGreen),
+            blocked: c(.systemRed), focus: c(.systemIndigo),
+            onBlackLabel: c(.labelColor, dark), onBlackSecondary: c(.secondaryLabelColor, dark),
+            onBlackTertiary: c(.tertiaryLabelColor, dark), onBlackQuaternary: c(.quaternaryLabelColor, dark)
+        )
     }
-
-    /// The other appearance, used for the Allow pill so it always stands out.
-    private static var opposite: NSAppearance {
-        NSAppearance(named: isDark ? .aqua : .darkAqua) ?? appearance
-    }
-
-    private static let darkAqua = NSAppearance(named: .darkAqua)
-
-    // MARK: Fills
-
-    static var island: NSColor { resolve(isDark ? .underPageBackgroundColor : .windowBackgroundColor) }
-    static var tile: NSColor { blend(resolve(.secondarySystemFill), over: island) }
-    static var rim: NSColor { resolve(.separatorColor) }
-    static var deny: NSColor { resolve(.unemphasizedSelectedContentBackgroundColor) }
-    static var allowBackground: NSColor { resolve(.windowBackgroundColor, in: opposite) }
-    static var allowText: NSColor { resolve(.labelColor, in: opposite) }
-    /// The real notch and every peek/pill are this.
-    static let black = NSColor.black
-
-    // MARK: Text
-
-    static var label: NSColor { resolve(.labelColor) }
-    static var secondaryLabel: NSColor { resolve(.secondaryLabelColor) }
-    static var tertiaryLabel: NSColor { resolve(.tertiaryLabelColor) }
-    static var quaternaryLabel: NSColor { resolve(.quaternaryLabelColor) }
-
-    // MARK: Accent and status
-
-    static var accent: NSColor { resolve(.controlAccentColor) }
-    static var needsYou: NSColor { resolve(.systemOrange) }
-    static var done: NSColor { resolve(.systemGreen) }
-    static var blocked: NSColor { resolve(.systemRed) }
-    static var focus: NSColor { resolve(.systemIndigo) }
-
-    /// Anything drawn on the black notch shape uses dark-appearance colours in both themes.
-    static func onBlack(_ color: NSColor) -> NSColor { resolve(color, in: darkAqua) }
 
     // MARK: Fonts (SF Pro; digits are monospaced so numbers never jitter)
 
-    static func font(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
-        NSFont.systemFont(ofSize: size, weight: weight)
+    static func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight)
     }
 
-    static func digits(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
-        NSFont.monospacedDigitSystemFont(ofSize: size, weight: weight)
+    static func digits(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight).monospacedDigit()
     }
 
-    static func mono(_ size: CGFloat) -> NSFont {
-        NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+    static func mono(_ size: CGFloat) -> Font {
+        .system(size: size, design: .monospaced)
     }
 
     // MARK: Resolution
 
-    static func resolve(_ color: NSColor, in appearance: NSAppearance? = nil) -> NSColor {
+    static func resolve(_ color: NSColor, in appearance: NSAppearance) -> NSColor {
         var out = color
-        (appearance ?? Self.appearance).performAsCurrentDrawingAppearance {
+        appearance.performAsCurrentDrawingAppearance {
             out = color.usingColorSpace(.sRGB) ?? color
         }
         return out
