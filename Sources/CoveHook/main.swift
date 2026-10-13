@@ -90,6 +90,40 @@ default:
     return line.isEmpty ? nil : line
 }
 
+/// Context size: GSD's status-line file when it exists (Terminal sessions), else the last `usage` in the transcript.
+@MainActor func contextTokens() -> (tokens: Int, percent: Int?)? {
+    if let id = str("session_id") {
+        for dir in [ProcessInfo.processInfo.environment["TMPDIR"], "/tmp/"].compactMap({ $0 }) {
+            let path = (dir.hasSuffix("/") ? dir : dir + "/") + "claude-ctx-\(id).json"
+            if let data = FileManager.default.contents(atPath: path),
+               let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+               let window = json["context_window"] as? [String: Any] {
+                if let used = window["used_percentage"] as? Double { return (0, Int(used.rounded())) }
+                if let remaining = window["remaining_percentage"] as? Double { return (0, Int((100 - remaining).rounded())) }
+            }
+        }
+    }
+    guard let path = str("transcript_path"), let handle = FileHandle(forReadingAtPath: path) else { return nil }
+    defer { try? handle.close() }
+    let size = (try? handle.seekToEnd()) ?? 0
+    let tailLength: UInt64 = 262_144
+    try? handle.seek(toOffset: size > tailLength ? size - tailLength : 0)
+    guard let data = try? handle.readToEnd(), let text = String(data: data, encoding: .utf8),
+          let range = text.range(of: #""usage":\{[^}]*\}"#, options: [.regularExpression, .backwards]) else { return nil }
+    let block = String(text[range])
+    func number(_ key: String) -> Int {
+        guard let r = block.range(of: "\"\(key)\":"), let end = block[r.upperBound...].firstIndex(where: { !$0.isNumber }) else { return 0 }
+        return Int(block[r.upperBound..<end]) ?? 0
+    }
+    let tokens = number("input_tokens") + number("cache_creation_input_tokens") + number("cache_read_input_tokens")
+    return tokens > 0 ? (tokens, nil) : nil
+}
+
+if event == "Stop" || event == "UserPromptSubmit", let context = contextTokens() {
+    if context.tokens > 0 { message["context_tokens"] = context.tokens }
+    if let percent = context.percent { message["context_percent"] = percent }
+}
+
 if event == "SessionStart" || event == "UserPromptSubmit", let cwd = str("cwd") {
     if let common = git(["rev-parse", "--path-format=absolute", "--git-common-dir"], in: cwd) {
         message["project"] = URL(fileURLWithPath: common).deletingLastPathComponent().lastPathComponent

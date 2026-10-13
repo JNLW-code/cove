@@ -62,6 +62,11 @@ struct SessionRow: View {
             }
             Spacer(minLength: 8)
             trailing(p)
+            if let percent = session.contextPercent {
+                Text("\(percent)%").font(Theme.digits(11, .medium))
+                    .foregroundStyle(percent >= 90 ? p.blocked : percent >= 80 ? p.needsYou : p.tertiaryLabel)
+                    .frame(width: 34, alignment: .trailing)
+            }
         }
         .padding(.horizontal, 14)
         .frame(height: Island.rowHeight)

@@ -106,6 +106,8 @@ final class ClaudeSession: Identifiable {
     var lastMessage: String?
     /// While Claude's Stop hook is waiting, a reply typed in the island goes straight back through it.
     var replyRequestID: String?
+    /// How full the context window is, 0–100, when known.
+    var contextPercent: Int?
     var state: State = .idle
     var turnStart: Date?
     var lastEvent = Date()
@@ -225,6 +227,8 @@ final class ClaudeModel {
         if let pid = m.int("pid").map(Int32.init), s.pid != pid { s.pid = pid; watch(s) }
         if let term = m.string("term") { s.term = term }
         if let host = m.string("host_session_id"), !host.isEmpty { s.hostID = host }
+        if let percent = m.int("context_percent") { s.contextPercent = min(100, max(0, percent)) }
+        else if let tokens = m.int("context_tokens") { s.contextPercent = min(100, Int((Double(tokens) / Double(Self.contextWindow(tokens))) * 100)) }
         let agent = m.string("agent_id")
 
         switch m.event {
@@ -310,6 +314,15 @@ final class ClaudeModel {
         }
         scheduleQuiet(s)
         onChanged?()
+    }
+
+    /// 1,000,000 when the model setting says [1m] (or the context is already past 200k), else 200,000.
+    static func contextWindow(_ tokens: Int) -> Int {
+        if tokens > 200_000 { return 1_000_000 }
+        if let data = FileManager.default.contents(atPath: NSHomeDirectory() + "/.claude/settings.json"),
+           let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+           let model = json["model"] as? String, model.contains("[1m]") { return 1_000_000 }
+        return 200_000
     }
 
     /// Plain text of what a tool wants to do: the full command for Bash, the path for file tools, else the input.

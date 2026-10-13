@@ -335,8 +335,7 @@ struct TilesRow: View {
                     .zIndex(drag?.kind == kind ? 1 : 0)
             }
         }
-        .padding(.leading, 23)
-        .frame(width: Island.expandedWidth, alignment: .leading)
+        .frame(width: Island.expandedWidth, alignment: .center)
     }
 
     private func dragChanged(_ kind: TileKind, translation: CGFloat) {
