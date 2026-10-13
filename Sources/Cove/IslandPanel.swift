@@ -219,6 +219,11 @@ final class IslandController: NSObject {
         }
     }
 
+    /// Closes the open island (if any) so the compact pill or a peek can be seen. Used by the dev commands.
+    func closeIfExpanded() {
+        if island.mode == .expanded { show(baseMode, animation: Self.closeAnimation) }
+    }
+
     /// Shows one peek for `seconds`, then returns to the base mode. A new peek replaces the old one.
     /// While the island is open the peek waits and shows when the island closes.
     func showPeek(_ content: PeekContent, seconds: Double = 3) {

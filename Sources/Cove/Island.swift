@@ -81,7 +81,7 @@ final class Island {
     enum Mode: Equatable { case resting, compact, peek, expanded }
 
     static let expandedWidth: CGFloat = 662
-    static let pillWidth: CGFloat = 371
+    static let lobeWidth: CGFloat = 112
     static let ear: CGFloat = 8
 
     var mode: Mode = .resting
@@ -162,6 +162,8 @@ final class Island {
 
     // MARK: Geometry
 
+    var pillWidth: CGFloat { notchSize.width + 2 * Self.lobeWidth }
+
     var expandedHeight: CGFloat { notchSize.height + 18 + 94 + 18 }
 
     var peekHeight: CGFloat { notchSize.height + (peek?.second == nil ? 24 : 40) }
@@ -170,7 +172,7 @@ final class Island {
     func contentSize(for mode: Mode) -> CGSize {
         switch mode {
         case .resting: notchSize
-        case .compact: CGSize(width: Self.pillWidth + 2 * Self.ear, height: notchSize.height)
+        case .compact: CGSize(width: pillWidth + 2 * Self.ear, height: notchSize.height)
         case .peek: CGSize(width: notchSize.width, height: peekHeight)
         case .expanded: CGSize(width: Self.expandedWidth, height: expandedHeight)
         }
@@ -179,7 +181,7 @@ final class Island {
     var blackParams: BlackParams {
         switch mode {
         case .resting, .expanded: BlackParams(width: notchSize.width, height: notchSize.height, radius: 7, ear: 0)
-        case .compact: BlackParams(width: Self.pillWidth, height: notchSize.height, radius: notchSize.height / 2, ear: Self.ear)
+        case .compact: BlackParams(width: pillWidth, height: notchSize.height, radius: notchSize.height / 2, ear: Self.ear)
         case .peek: BlackParams(width: notchSize.width, height: peekHeight, radius: 14, ear: 0)
         }
     }

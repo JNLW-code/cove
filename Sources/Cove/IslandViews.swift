@@ -110,7 +110,7 @@ struct CompactLobes: View {
                 StatusGrid(size: 12, kind: content.kind, palette: p, animate: !island.reduceMotion)
                 Text(content.word).font(Theme.font(12, .semibold)).foregroundStyle(p.onBlackLabel)
             }
-            .frame(width: 96)
+            .frame(width: Island.lobeWidth)
             Spacer().frame(width: island.notchSize.width)
             HStack(spacing: 6) {
                 Text(content.detail).font(Theme.font(12)).foregroundStyle(p.onBlackSecondary)
@@ -120,7 +120,7 @@ struct CompactLobes: View {
                         .background(Capsule().fill(p.onBlackQuaternary))
                 }
             }
-            .frame(width: 96)
+            .frame(width: Island.lobeWidth)
         }
         .lineLimit(1)
         .frame(height: island.notchSize.height)
@@ -363,7 +363,9 @@ struct TileView: View {
         let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
         ZStack(alignment: .topLeading) {
             shape.fill(p.tile)
-            content.clipShape(shape)
+            content
+                .frame(width: kind.width, height: 94, alignment: .topLeading)
+                .clipShape(shape)
             if island.editing {
                 Button { withAnimation(.easeInOut(duration: 0.22)) { island.hide(kind) } } label: {
                     ZStack {
@@ -479,9 +481,9 @@ struct CalendarTileContent: View {
             Text(event.dayNumber).font(Theme.digits(28, .light)).foregroundStyle(palette.label)
                 .offset(x: 14, y: 28)
             Text(event.title).font(Theme.font(13, .bold)).foregroundStyle(palette.label)
-                .lineLimit(1).frame(width: 102, alignment: .leading).offset(x: 58, y: 15)
-            Text(event.when).font(Theme.digits(11)).foregroundStyle(palette.secondaryLabel)
-                .lineLimit(1).frame(width: 102, alignment: .leading).offset(x: 58, y: 33)
+                .lineLimit(1).frame(width: 108, alignment: .leading).offset(x: 56, y: 15)
+            Text(event.when).font(Theme.digits(10.5)).foregroundStyle(palette.secondaryLabel)
+                .lineLimit(1).frame(width: 108, alignment: .leading).offset(x: 56, y: 33)
         }
     }
 }
