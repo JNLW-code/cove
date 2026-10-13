@@ -9,6 +9,8 @@ import Foundation
 
 let socketPath = NSHomeDirectory() + "/Library/Application Support/Cove/cove.sock"
 let waitSeconds: TimeInterval = ProcessInfo.processInfo.environment["COVE_HOOK_WAIT"].flatMap(Double.init) ?? 60
+/// How long a Stop hook waits for a reply typed in the island when Claude's message ends with a question.
+let replySeconds: TimeInterval = ProcessInfo.processInfo.environment["COVE_HOOK_WAIT_STOP"].flatMap(Double.init) ?? 45
 let awaySeconds: Double = ProcessInfo.processInfo.environment["COVE_HOOK_AWAY"].flatMap(Double.init) ?? 60
 let commandLimit = 200
 
@@ -56,7 +58,10 @@ case "Stop", "SubagentStop":
     if let last = str("last_assistant_message") {
         let trimmed = last.trimmingCharacters(in: .whitespacesAndNewlines)
         message["ends_with_question"] = trimmed.hasSuffix("?")
-        if event == "Stop" { message["last_message"] = String(trimmed.prefix(1500)) }
+        if event == "Stop" {
+            message["last_message"] = String(trimmed.prefix(1500))
+            if trimmed.hasSuffix("?") { message["request_id"] = UUID().uuidString }
+        }
     }
 case "PermissionRequest":
     if let key = inputKey() { message["input_key"] = key }
@@ -118,7 +123,8 @@ line.append(0x0A)
 let written = line.withUnsafeBytes { write(fd, $0.baseAddress, $0.count) }
 guard written == line.count else { finish() }
 
-guard event == "PermissionRequest" else { finish() }
+let waitsForReply = event == "Stop" && message["request_id"] != nil
+guard event == "PermissionRequest" || waitsForReply else { finish() }
 
 // AskUserQuestion and ExitPlanMode are never answered from the island; the app was told, Claude asks as usual.
 if toolName == "AskUserQuestion" || toolName == "ExitPlanMode" { finish() }
@@ -131,12 +137,13 @@ let inputTypes: [CGEventType] = [.mouseMoved, .leftMouseDown, .rightMouseDown, .
 let idle = inputTypes.map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }.min() ?? 0
 if idle > awaySeconds { finish() }
 
-// Wait for one reply line, at most waitSeconds. Closed connection or timeout → no output.
-var timeout = timeval(tv_sec: Int(waitSeconds), tv_usec: 0)
+// Wait for one reply line, at most waitSeconds (replySeconds for a Stop). Closed connection or timeout → no output.
+let maxWait = waitsForReply ? replySeconds : waitSeconds
+var timeout = timeval(tv_sec: Int(maxWait), tv_usec: 0)
 setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
 var reply = Data()
 var buffer = [UInt8](repeating: 0, count: 4096)
-let deadline = Date().addingTimeInterval(waitSeconds)
+let deadline = Date().addingTimeInterval(maxWait)
 while Date() < deadline {
     let n = read(fd, &buffer, buffer.count)
     if n <= 0 { break }
@@ -146,8 +153,16 @@ while Date() < deadline {
 close(fd)
 guard let replyAny = try? JSONSerialization.jsonObject(with: reply.prefix(while: { $0 != 0x0A })),
       let replyObject = replyAny as? [String: Any],
-      replyObject["request_id"] as? String == message["request_id"] as? String,
-      let decision = replyObject["decision"] as? String else { finish() }
+      replyObject["request_id"] as? String == message["request_id"] as? String else { finish() }
+
+// A Stop reply: James typed an answer in the island; Claude carries on with it.
+if waitsForReply {
+    if let text = replyObject["reply"] as? String, !text.isEmpty,
+       let out = try? JSONSerialization.data(withJSONObject: ["decision": "block", "reason": text]),
+       let line = String(data: out, encoding: .utf8) { print(line) }
+    finish()
+}
+guard let decision = replyObject["decision"] as? String else { finish() }
 
 switch decision {
 case "allow":

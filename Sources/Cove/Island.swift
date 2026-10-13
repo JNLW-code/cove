@@ -110,6 +110,8 @@ final class Island {
     let spotifyModel = SpotifyModel()
     let weatherModel = WeatherModel()
     let calendarModel = CalendarModel()
+    /// Feedback under the reply box ("Sent", or why it could not be delivered).
+    var replyStatus: String?
     var hotKeyAllow = HotKeys.defaultAllow.display
     var hotKeyDeny = HotKeys.defaultDeny.display
 
@@ -181,6 +183,7 @@ final class Island {
     }
 
     static let longCommandBox: CGFloat = 128
+    static let replyRow: CGFloat = 40
 
     /// A command that needs the scrolling box: more than 2 lines or longer than one line of the card.
     static func isLong(_ command: String) -> Bool {
@@ -189,7 +192,7 @@ final class Island {
 
     var cardHeight: CGFloat {
         if let card = claude.frontCard, Self.isLong(card.command) { return Self.cardHeight + Self.longCommandBox }
-        if claude.frontCard == nil, let s = cardSession, case .done = s.state, s.lastMessage != nil { return Self.cardHeight + Self.longCommandBox }
+        if claude.frontCard == nil, let s = cardSession, case .done = s.state { return Self.cardHeight + (s.lastMessage != nil ? Self.longCommandBox : 0) + Self.replyRow }
         return Self.cardHeight
     }
 

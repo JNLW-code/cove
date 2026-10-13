@@ -27,6 +27,7 @@ Then add the entries from [hooks/settings-snippet.json](hooks/settings-snippet.j
 - Rest the mouse on the notch: the island opens. Move away: it closes. Click the background to keep it open.
 - Toolbar: settings (the menu), ✓ edit tiles (red − removes, grab bar drags), mute, ◐ dark/light, your recent apps.
 - Claude rows: project · branch, the current step, agents, a timer. Click a row to bring the Claude app (or Terminal) forward.
+- Done cards show Claude's last message and a reply box. Return sends it: through the hook if Claude just asked a question, otherwise Cove opens the session and types it in (needs the Accessibility permission once; desktop sessions only).
 - A permission request opens the island by itself: Allow (⌃⌥Y) or Deny (⌃⌥N). Long commands scroll; Allow turns on once you've seen the end.
 - Menu: Theme, Tiles, Weather City, Peeks (which apps, sound), Allow / Deny Shortcuts, Permissions (ticks), Launch at Login, Demo, Quit.
 

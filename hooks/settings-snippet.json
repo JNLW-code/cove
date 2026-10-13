@@ -90,7 +90,7 @@
         {
           "type": "command",
           "command": "\"$HOME/.claude/island/hook.sh\" Stop",
-          "timeout": 2
+          "timeout": 60
         }
       ]
     }

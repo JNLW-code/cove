@@ -131,7 +131,7 @@ final class ClaudeSocket {
             let line = connection.buffer.subdata(in: connection.buffer.startIndex..<newline)
             connection.buffer.removeSubrange(connection.buffer.startIndex...newline)
             guard let message = HookMessage(line: line) else { continue }
-            if message.event == "PermissionRequest", let id = message.string("request_id") {
+            if let id = message.string("request_id"), message.event == "PermissionRequest" || message.event == "Stop" {
                 connection.requestID = id
                 pending[id] = fd
             }
@@ -141,9 +141,21 @@ final class ClaudeSocket {
 
     /// Answers a waiting PermissionRequest hook and closes its connection.
     func reply(to requestID: String, decision: String) {
-        guard let fd = pending[requestID], let connection = connections[fd] else { return }
-        let line = #"{"request_id":"\#(requestID)","decision":"\#(decision)"}"# + "\n"
-        _ = line.withCString { write(fd, $0, strlen($0)) }
+        send(["request_id": requestID, "decision": decision], to: requestID)
+    }
+
+    /// Sends James's typed reply down a waiting Stop hook.
+    func reply(to requestID: String, text: String) {
+        send(["request_id": requestID, "reply": text], to: requestID)
+    }
+
+    func isPending(_ requestID: String) -> Bool { pending[requestID] != nil }
+
+    private func send(_ object: [String: String], to requestID: String) {
+        guard let fd = pending[requestID], let connection = connections[fd],
+              var data = try? JSONSerialization.data(withJSONObject: object) else { return }
+        data.append(0x0A)
+        _ = data.withUnsafeBytes { write(fd, $0.baseAddress, $0.count) }
         connection.requestID = nil
         pending[requestID] = nil
         closeConnection(connection)

@@ -121,6 +121,12 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 - [x] 11. Settings (14 Oct): menu with Theme, Tiles (+Edit), Weather City… (alert with a text field), Peeks (apps with ticks + Sound), Allow/Deny Shortcuts (4 presets), Permissions (ticks or a one-line reason), Launch at Login (SMAppService, only from ~/Applications, opens Login Items if approval is needed), Demo, Quit. `make install` done; Cove now runs from ~/Applications. Launch at Login not clicked by me (needs James).
 - [x] 12. README rewritten and verified by running `make uninstall` → `make install` → `make install-hooks` → `make fake`. /code-review on steps 7–11 (6 findings: 5 fixed, 1 cleanup skipped). At rest 0.0 % CPU, ~18 MB.
 
+## Added after launch (14 Oct, James's feedback)
+- Row/card click opens the exact desktop session via its `claude://claude.ai/epitaxy/<host id>` link (the hook forwards `CLAUDE_CODE_HOST_SESSION_ID`). Terminal sessions still just bring Terminal forward.
+- The Done / Waiting-for-you card shows Claude's last message (first 1500 chars, memory only, cleared on the next prompt).
+- **Reply box** on the Done card. Two deliveries: (1) when Claude's message ends with "?", the Stop hook keeps its connection open up to 45 s (`COVE_HOOK_WAIT_STOP`) and a typed reply goes back as `{"decision":"block","reason":"<text>"}`, so Claude carries on with it; the hook lets go when the card is dismissed, the session ends, or James is away. (2) Otherwise Cove opens the exact session and pastes the text + Return (Accessibility permission, desktop sessions only; `Typist.swift`). Stop hook timeout raised to 60 in the snippet (James re-copied settings-merged.json).
+- The panel can now become key (non-activating, so the app is never activated) so the reply box takes typing; focus is handed back to the previous app after sending.
+
 ## Later
 - Chips row from ref 5: YouTube, Window, Messages, Clipboard, Tray, Recents, Mac.
 - Do Not Disturb peek. Options for James to pick: (a) watch `~/Library/DoNotDisturb/DB/Assertions.json` with a DispatchSource (no polling) — needs Full Disk Access for Cove; (b) a paid Apple team to use INFocusStatusCenter; (c) leave it out.

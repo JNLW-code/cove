@@ -3,7 +3,8 @@ import SwiftUI
 
 /// Borderless, non-activating panel that never takes focus.
 final class IslandPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
+    /// Key only so the reply box can take typing; as a non-activating panel it never activates the app.
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }
 
@@ -190,6 +191,36 @@ final class IslandController: NSObject {
         if island.claude.frontCard == nil { showPeek(content, seconds: 1.5) }
     }
 
+    /// A reply typed on the card. Through the waiting hook if Claude just stopped, else typed into the app.
+    func sendReply(_ text: String, to session: ClaudeSession) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        haptic()
+        let previous = NSWorkspace.shared.frontmostApplication
+        if island.claude.replyThroughHook(session, text: trimmed) {
+            island.replyStatus = "Sent"
+            collapse()
+            if let previous, previous != NSRunningApplication.current, let url = previous.bundleURL {
+                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+            }
+            return
+        }
+        island.replyStatus = "Typing it into the app…"
+        collapse()
+        Task { [weak self] in
+            guard let self else { return }
+            if let problem = await Typist.deliver(trimmed, to: session) {
+                self.island.replyStatus = problem
+                self.showPeek(PeekContent(symbol: "exclamationmark.triangle", icon: nil, tint: .needsYou, word: "Reply not sent", second: String(problem.prefix(60))), seconds: 4)
+            } else {
+                self.island.replyStatus = nil
+                session.lastMessage = nil
+                session.doneSeen = true
+                self.island.claude.markDoneSeen()
+            }
+        }
+    }
+
     func rowClicked(_ session: ClaudeSession) {
         island.claude.bringForward(session)
         collapse()
@@ -238,7 +269,9 @@ final class IslandController: NSObject {
     func collapse() {
         island.editing = false
         setPinned(false)
+        panel.makeFirstResponder(nil)
         island.claude.markDoneSeen()
+        for s in island.claude.sessions where s.replyRequestID != nil && s.doneSeen { island.claude.closeReply(s) }
         show(baseMode, animation: Self.closeAnimation)
         if let seconds = pendingPeekSeconds { startPeekTimer(seconds) }
     }

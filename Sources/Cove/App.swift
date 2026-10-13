@@ -129,6 +129,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return [
             line("Spotify (Automation)", Permissions.automation(for: SpotifyModel.bundleID), why: "Needed for play, pause, next and artwork."),
             line("Calendar", Permissions.calendar, why: "Needed to show your next event."),
+            line("Accessibility", Typist.isTrusted ? .granted : .notAsked, why: "Needed to type a reply into the Claude app after its hook has moved on."),
             item("Launch at Login: \(LaunchAtLogin.statusText)", nil, enabled: false),
         ]
     }
@@ -239,6 +240,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "calendar.request": island.calendarModel.requestIfNeeded()
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
+        case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }
         default: break
         }
     }

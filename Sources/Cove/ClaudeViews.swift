@@ -149,6 +149,8 @@ struct ClaudeCard: View {
     var session: ClaudeSession
     var island: Island
     let actions: IslandActions
+    @State private var reply = ""
+    @FocusState private var replyFocused: Bool
 
     var body: some View {
         if let card = island.claude.frontCard {
@@ -181,9 +183,10 @@ struct ClaudeCard: View {
                     }
                     Text(subtitle).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1)
                     Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+                    if isDone { replyField(p) }
                 }
                 .padding(.leading, 20)
-                .padding(.vertical, message == nil ? 0 : 18)
+                .padding(.vertical, (message == nil && !isDone) ? 0 : 18)
                 Spacer(minLength: 12)
                 if needsOpen || message != nil {
                     Button { actions.rowClicked(session) } label: {
@@ -207,6 +210,45 @@ struct ClaudeCard: View {
     }
 
     private var needsOpen: Bool { session.needsYou != nil }
+
+    private var isDone: Bool {
+        if case .done = session.state { return true }
+        return false
+    }
+
+    /// One line to type a reply; Return sends it. Claude gets it as its next instruction.
+    private func replyField(_ p: Palette) -> some View {
+        HStack(spacing: 8) {
+            TextField("Reply to Claude…", text: $reply)
+                .textFieldStyle(.plain)
+                .font(Theme.font(12.5))
+                .foregroundStyle(p.label)
+                .focused($replyFocused)
+                .onSubmit(send)
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(replyFocused ? p.accent : p.rim, lineWidth: 1))
+            Button(action: send) {
+                Image(systemName: "arrow.up").font(.system(size: 11, weight: .bold)).foregroundStyle(p.allowText)
+                    .frame(width: 28, height: 28).background(Circle().fill(p.allowBackground))
+            }
+            .buttonStyle(PressStyle())
+            .disabled(reply.trimmingCharacters(in: .whitespaces).isEmpty)
+            .opacity(reply.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
+            if let status = island.replyStatus {
+                Text(status).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+            }
+        }
+        .frame(height: Island.replyRow - 8)
+        .padding(.top, 2)
+    }
+
+    private func send() {
+        let text = reply
+        reply = ""
+        actions.reply(text, to: session)
+    }
 
     /// Claude's last words, shown on the Done card so you can read the reply without opening the app.
     private var messageToShow: String? {

@@ -104,6 +104,8 @@ final class ClaudeSession: Identifiable {
     var hostID: String?
     /// What Claude last said (kept in memory only, cleared on the next prompt).
     var lastMessage: String?
+    /// While Claude's Stop hook is waiting, a reply typed in the island goes straight back through it.
+    var replyRequestID: String?
     var state: State = .idle
     var turnStart: Date?
     var lastEvent = Date()
@@ -234,6 +236,7 @@ final class ClaudeModel {
             s.inFlight = [:]
             s.endsWithQuestion = false
             s.lastMessage = nil
+            closeReply(s)
             s.doneSeen = false
             s.agents = []
             settleCards(for: s.id)
@@ -267,6 +270,8 @@ final class ClaudeModel {
                 let seconds = Int(Date().timeIntervalSince(s.turnStart ?? Date()))
                 s.endsWithQuestion = m.bool("ends_with_question") ?? false
                 if let text = m.string("last_message"), !text.isEmpty { s.lastMessage = text }
+                closeReply(s)
+                s.replyRequestID = m.string("request_id")
                 s.inFlight = [:]
                 s.pendingStep = nil
                 stepTasks[s.id]?.cancel()
@@ -324,7 +329,26 @@ final class ClaudeModel {
         return s
     }
 
+    /// Lets a waiting Stop hook go (Claude stops normally).
+    func closeReply(_ s: ClaudeSession) {
+        if let id = s.replyRequestID { socket?.close(request: id); s.replyRequestID = nil }
+    }
+
+    /// Sends a typed reply through the waiting Stop hook. Returns false when that hook is gone.
+    func replyThroughHook(_ s: ClaudeSession, text: String) -> Bool {
+        guard let id = s.replyRequestID, socket?.isPending(id) == true else { s.replyRequestID = nil; return false }
+        socket?.reply(to: id, text: text)
+        s.replyRequestID = nil
+        s.turnStart = Date()
+        s.lastMessage = nil
+        s.doneSeen = true
+        s.state = .working(.thinking)
+        onChanged?()
+        return true
+    }
+
     private func end(_ id: String) {
+        if let s = session(id) { closeReply(s) }
         settleCards(for: id)
         sessions.removeAll { $0.id == id }
         quietTasks[id]?.cancel(); quietTasks[id] = nil
@@ -395,6 +419,7 @@ final class ClaudeModel {
 
     /// The hook gave up (timed out, or Claude went on without us): drop the card, Claude is asking in the app now.
     func requestClosed(_ requestID: String) {
+        if let s = sessions.first(where: { $0.replyRequestID == requestID }) { s.replyRequestID = nil; return }
         guard let card = cards.first(where: { $0.id == requestID }) else { return }
         cards.removeAll { $0.id == requestID }
         if let s = session(card.sessionID), !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp) }
