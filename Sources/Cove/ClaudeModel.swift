@@ -100,6 +100,10 @@ final class ClaudeSession: Identifiable {
     var title: String?
     var pid: Int32?
     var term = ""
+    /// The desktop app's own id for this session (opens the exact session); nil for terminal sessions.
+    var hostID: String?
+    /// What Claude last said (kept in memory only, cleared on the next prompt).
+    var lastMessage: String?
     var state: State = .idle
     var turnStart: Date?
     var lastEvent = Date()
@@ -218,6 +222,7 @@ final class ClaudeModel {
         if let title = m.string("session_title") { s.title = title }
         if let pid = m.int("pid").map(Int32.init), s.pid != pid { s.pid = pid; watch(s) }
         if let term = m.string("term") { s.term = term }
+        if let host = m.string("host_session_id"), !host.isEmpty { s.hostID = host }
         let agent = m.string("agent_id")
 
         switch m.event {
@@ -228,6 +233,7 @@ final class ClaudeModel {
             s.filesChanged = []
             s.inFlight = [:]
             s.endsWithQuestion = false
+            s.lastMessage = nil
             s.doneSeen = false
             s.agents = []
             settleCards(for: s.id)
@@ -260,6 +266,7 @@ final class ClaudeModel {
             if agent == nil {
                 let seconds = Int(Date().timeIntervalSince(s.turnStart ?? Date()))
                 s.endsWithQuestion = m.bool("ends_with_question") ?? false
+                if let text = m.string("last_message"), !text.isEmpty { s.lastMessage = text }
                 s.inFlight = [:]
                 s.pendingStep = nil
                 stepTasks[s.id]?.cancel()
@@ -436,8 +443,14 @@ final class ClaudeModel {
         processWatchers[s.id] = source
     }
 
-    /// Brings the app this session runs in to the front (the Claude app, or the terminal it was started from).
+    /// Brings the session forward: the exact session in the Claude app when its id is known, else the app itself
+    /// (the Claude app, or the terminal it was started from).
     func bringForward(_ s: ClaudeSession) {
+        if let host = s.hostID, s.term != "Apple_Terminal", s.term != "iTerm.app",
+           let url = URL(string: "claude://claude.ai/epitaxy/\(host)") {
+            NSWorkspace.shared.open(url)
+            return
+        }
         let name: String
         switch s.term {
         case "Apple_Terminal": name = "Terminal"

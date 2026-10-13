@@ -29,6 +29,8 @@ for key in ["session_id", "agent_id", "agent_type", "tool_name", "tool_use_id", 
 }
 if let pid = ProcessInfo.processInfo.environment["CLAUDE_PID"].flatMap(Int32.init) { message["pid"] = pid }
 message["term"] = ProcessInfo.processInfo.environment["TERM_PROGRAM"] ?? ""
+// The desktop app's own session id, so a click on the row can open that exact session.
+if let host = ProcessInfo.processInfo.environment["CLAUDE_CODE_HOST_SESSION_ID"], !host.isEmpty { message["host_session_id"] = host }
 
 let toolInput = input["tool_input"] as? [String: Any]
 let toolName = str("tool_name") ?? ""
@@ -54,6 +56,7 @@ case "Stop", "SubagentStop":
     if let last = str("last_assistant_message") {
         let trimmed = last.trimmingCharacters(in: .whitespacesAndNewlines)
         message["ends_with_question"] = trimmed.hasSuffix("?")
+        if event == "Stop" { message["last_message"] = String(trimmed.prefix(1500)) }
     }
 case "PermissionRequest":
     if let key = inputKey() { message["input_key"] = key }

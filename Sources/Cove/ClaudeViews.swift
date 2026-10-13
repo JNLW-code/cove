@@ -161,18 +161,31 @@ struct ClaudeCard: View {
     private var statusCard: some View {
         let p = island.palette
         let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
+        let message = messageToShow
         return ZStack(alignment: .leading) {
             shape.fill(p.tile).overlay(shape.strokeBorder(edge(p), lineWidth: 1))
-            HStack(spacing: 0) {
-                grid(p).padding(.leading, 20)
-                VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: message == nil ? .center : .top, spacing: 0) {
+                grid(p).padding(.leading, 20).padding(.top, message == nil ? 0 : 24)
+                VStack(alignment: .leading, spacing: message == nil ? 4 : 6) {
                     Text(title).font(Theme.font(14, .bold)).foregroundStyle(p.label)
+                    if let message {
+                        ScrollView(.vertical) {
+                            Text(message).font(Theme.font(12.5)).foregroundStyle(p.label)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 10).padding(.vertical, 8)
+                                .textSelection(.enabled)
+                        }
+                        .frame(height: Island.longCommandBox - 8)
+                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                    }
                     Text(subtitle).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1)
                     Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
                 }
                 .padding(.leading, 20)
+                .padding(.vertical, message == nil ? 0 : 18)
                 Spacer(minLength: 12)
-                if needsOpen {
+                if needsOpen || message != nil {
                     Button { actions.rowClicked(session) } label: {
                         HStack(spacing: 5) {
                             Text("Open").font(Theme.font(13, .semibold))
@@ -184,15 +197,22 @@ struct ClaudeCard: View {
                     }
                     .buttonStyle(PressStyle())
                     .padding(.trailing, 20)
+                    .padding(.top, message == nil ? 0 : 24)
                 }
             }
         }
-        .frame(width: Island.expandedWidth - 46, height: Island.cardHeight)
+        .frame(width: Island.expandedWidth - 46, height: island.cardHeight)
         .contentShape(shape)
         .onTapGesture { if !needsOpen { actions.rowClicked(session) } }
     }
 
     private var needsOpen: Bool { session.needsYou != nil }
+
+    /// Claude's last words, shown on the Done card so you can read the reply without opening the app.
+    private var messageToShow: String? {
+        if case .done = session.state { return session.lastMessage }
+        return nil
+    }
 
     @ViewBuilder private func grid(_ p: Palette) -> some View {
         switch session.state {

@@ -189,6 +189,7 @@ final class Island {
 
     var cardHeight: CGFloat {
         if let card = claude.frontCard, Self.isLong(card.command) { return Self.cardHeight + Self.longCommandBox }
+        if claude.frontCard == nil, let s = cardSession, case .done = s.state, s.lastMessage != nil { return Self.cardHeight + Self.longCommandBox }
         return Self.cardHeight
     }
 
