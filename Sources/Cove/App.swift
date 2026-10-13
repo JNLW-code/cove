@@ -118,10 +118,11 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "theme.system": island.setTheme(.system)
         case "demo.toggle": controller.toggleDemo()
         case "demo.next": controller.nextDemoStep()
-        case "show.resting": controller.setCompact(nil); controller.show(.resting, animation: IslandController.closeAnimation)
-        case "show.compact": controller.setCompact(Demo.working)
-        case "show.peek": controller.showPeek(Demo.dnd)
-        case "show.expanded": Demo.fill(island); controller.show(.expanded, animation: IslandController.openAnimation, settle: 0.55)
+        // show.* put the island in a held demo state (sample data, hover off); show.resting ends it.
+        case "show.resting": controller.stopDemo()
+        case "show.compact": controller.holdDemo(); controller.setCompact(Demo.working)
+        case "show.peek": controller.holdDemo(); controller.showPeek(Demo.dnd)
+        case "show.expanded": controller.holdDemo(); Demo.fill(island); controller.show(.expanded, animation: IslandController.openAnimation, settle: 0.55)
         case "edit.toggle": controller.toggleEdit()
         case "pin.toggle": controller.togglePin()
         default: break

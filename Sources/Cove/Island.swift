@@ -91,8 +91,8 @@ final class Island {
     var editing = false
     var demo = false
     private(set) var themeMode: ThemeMode
-    /// Bumped when the macOS appearance changes so "follow macOS" re-renders.
-    var appearanceTick = 0
+    /// Every colour the views use, resolved once per theme change (not per view body).
+    private(set) var palette: Palette
     var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     var notchSize = CGSize(width: 179, height: 32)
 
@@ -111,20 +111,23 @@ final class Island {
 
     init() {
         let defaults = UserDefaults.standard
-        themeMode = ThemeMode(rawValue: defaults.string(forKey: "theme") ?? "") ?? .dark
+        let mode = ThemeMode(rawValue: defaults.string(forKey: "theme") ?? "") ?? .dark
+        themeMode = mode
+        palette = Theme.palette(mode)
         let saved = (defaults.stringArray(forKey: "tileOrder") ?? []).compactMap(TileKind.init(rawValue:))
         order = saved.count == TileKind.allCases.count ? saved : TileKind.allCases
         hidden = Set((defaults.stringArray(forKey: "hiddenTiles") ?? []).compactMap(TileKind.init(rawValue:)))
     }
 
-    var palette: Palette {
-        _ = appearanceTick
-        return Theme.palette(themeMode)
-    }
-
     func setTheme(_ mode: ThemeMode) {
         themeMode = mode
+        palette = Theme.palette(mode)
         UserDefaults.standard.set(mode.rawValue, forKey: "theme")
+    }
+
+    /// Call when the macOS appearance changes so "follow macOS" re-resolves.
+    func appearanceDidChange() {
+        palette = Theme.palette(themeMode)
     }
 
     // MARK: Tiles
@@ -145,12 +148,14 @@ final class Island {
     func show(_ kind: TileKind) { hidden.remove(kind); saveTiles() }
 
     /// Moves `kind` to sit where `target` is now (before it when moving left, after it when moving right).
+    /// Not persisted until `commitOrder()`, so a drag does not write defaults on every swap.
     func move(_ kind: TileKind, to target: TileKind) {
         guard kind != target, let from = order.firstIndex(of: kind), let to = order.firstIndex(of: target) else { return }
         order.remove(at: from)
         order.insert(kind, at: to)
-        saveTiles()
     }
+
+    func commitOrder() { saveTiles() }
 
     private func saveTiles() {
         UserDefaults.standard.set(order.map(\.rawValue), forKey: "tileOrder")

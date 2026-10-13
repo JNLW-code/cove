@@ -329,7 +329,7 @@ struct TilesRow: View {
                 TileView(kind: kind, island: island, actions: actions,
                          dragOffset: drag?.kind == kind ? (drag?.offset ?? 0) : 0,
                          onDrag: { dragChanged(kind, translation: $0) },
-                         onDragEnd: { withAnimation(.easeInOut(duration: 0.12)) { drag = nil } })
+                         onDragEnd: { island.commitOrder(); withAnimation(.easeInOut(duration: 0.12)) { drag = nil } })
                     .zIndex(drag?.kind == kind ? 1 : 0)
             }
         }

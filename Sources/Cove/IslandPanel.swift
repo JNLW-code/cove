@@ -42,6 +42,7 @@ final class IslandController: NSObject {
     private var hoverTask: Task<Void, Never>?
     private var tightenTask: Task<Void, Never>?
     private var peekTask: Task<Void, Never>?
+    private var pendingPeekSeconds: Double?
     private var demoTask: Task<Void, Never>?
     private var demoStep = 0
     private var outsideClickMonitor: Any?
@@ -104,12 +105,13 @@ final class IslandController: NSObject {
     }
 
     /// Grows the panel to cover old and new, animates the content, then tightens the frame when the animation is done.
-    func show(_ mode: Island.Mode, animation: Animation?, settle: Double = 0.3) {
+    func show(_ mode: Island.Mode, animation: Animation?, settle: Double = 0.4) {
         tightenTask?.cancel()
+        if mode != .expanded { setPinned(false) }
         let target = frame(for: mode)
         let union = panel.frame.union(target)
         if union != panel.frame { panel.setFrame(union, display: true) }
-        panel.hasShadow = mode != .resting
+        if mode != .resting { panel.hasShadow = true }
         if let animation, !island.reduceMotion {
             withAnimation(animation) { island.mode = mode }
         } else {
@@ -121,6 +123,7 @@ final class IslandController: NSObject {
             try? await Task.sleep(for: .milliseconds(Int(settle * 1000)), tolerance: .milliseconds(20))
             guard !Task.isCancelled, let self, self.island.mode == mode else { return }
             self.panel.setFrame(target, display: true)
+            self.panel.hasShadow = mode != .resting
             self.panel.invalidateShadow()
         }
     }
@@ -135,7 +138,8 @@ final class IslandController: NSObject {
     func collapse() {
         island.editing = false
         setPinned(false)
-        show(baseMode, animation: Self.closeAnimation, settle: 0.3)
+        show(baseMode, animation: Self.closeAnimation)
+        if let seconds = pendingPeekSeconds { startPeekTimer(seconds) }
     }
 
     // MARK: Hover and pin
@@ -182,7 +186,12 @@ final class IslandController: NSObject {
 
     func toggleEdit() {
         withAnimation(Self.switchAnimation) { island.editing.toggle() }
-        if island.editing { setPinned(true) }
+        if island.editing {
+            setPinned(true)
+        } else if !island.demo {
+            setPinned(false)
+            if !panel.frame.contains(NSEvent.mouseLocation) { collapse() }
+        }
     }
 
     func toggleTheme() {
@@ -211,15 +220,25 @@ final class IslandController: NSObject {
     }
 
     /// Shows one peek for `seconds`, then returns to the base mode. A new peek replaces the old one.
+    /// While the island is open the peek waits and shows when the island closes.
     func showPeek(_ content: PeekContent, seconds: Double = 3) {
         peekTask?.cancel()
+        peekTask = nil
         island.peek = content
-        if island.mode != .expanded {
-            show(.peek, animation: Self.switchAnimation)
+        if island.mode == .expanded {
+            pendingPeekSeconds = seconds
+            return
         }
+        show(.peek, animation: Self.switchAnimation)
+        startPeekTimer(seconds)
+    }
+
+    private func startPeekTimer(_ seconds: Double) {
+        pendingPeekSeconds = nil
         peekTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(Int(seconds * 1000)), tolerance: .milliseconds(100))
             guard !Task.isCancelled, let self else { return }
+            self.peekTask = nil
             self.island.peek = nil
             if self.island.mode == .peek { self.show(self.baseMode, animation: Self.closeAnimation) }
         }
@@ -232,15 +251,23 @@ final class IslandController: NSObject {
     }
 
     private func startDemo() {
-        island.demo = true
-        setPinned(false)
+        holdDemo()
         demoStep = 0
         runDemoStep()
     }
 
-    private func stopDemo() {
+    /// Demo state without the automatic cycling: sample data is shown and hover is off, for the dev commands.
+    func holdDemo() {
+        demoTask?.cancel()
+        island.demo = true
+        setPinned(false)
+    }
+
+    func stopDemo() {
         demoTask?.cancel()
         peekTask?.cancel()
+        peekTask = nil
+        pendingPeekSeconds = nil
         island.demo = false
         island.editing = false
         island.compact = nil
@@ -275,7 +302,7 @@ final class IslandController: NSObject {
     }
 
     @objc private func appearanceChanged() {
-        island.appearanceTick += 1
+        island.appearanceDidChange()
     }
 
     @objc private func accessibilityChanged() {
