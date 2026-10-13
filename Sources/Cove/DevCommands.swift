@@ -6,7 +6,7 @@ import notify
 @MainActor
 final class DevCommands {
     static let names = ["theme.dark", "theme.light", "theme.system", "demo.toggle", "demo.next",
-                        "show.resting", "show.compact", "show.peek", "show.expanded", "open", "close", "edit.toggle", "pin.toggle"]
+                        "show.resting", "show.compact", "show.peek", "show.expanded", "open", "close", "edit.toggle", "pin.toggle", "menu.open"]
     private var tokens: [Int32] = []
 
     /// Only when launched with COVE_UI_TEST=1 (never by `make run` or the installed app): answer the front card.

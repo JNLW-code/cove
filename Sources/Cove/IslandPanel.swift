@@ -161,6 +161,13 @@ final class IslandController: NSObject {
         }
     }
 
+    /// Shortcuts changed in the menu: update the labels and re-register if a card is showing.
+    func shortcutsChanged() {
+        island.hotKeyAllow = hotKeys?.allow.display ?? island.hotKeyAllow
+        island.hotKeyDeny = hotKeys?.deny.display ?? island.hotKeyDeny
+        if island.claude.frontCard != nil { hotKeys?.register() }
+    }
+
     private func answerFront(allow: Bool) {
         guard let card = island.claude.frontCard else { return }
         answer(card, allow: allow)

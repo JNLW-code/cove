@@ -36,10 +36,11 @@ final class CalendarModel: NSObject {
         let end = Calendar.current.date(byAdding: .day, value: 7, to: start) ?? start
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         let events = store.events(matching: predicate)
-            .filter { !$0.isAllDay && ($0.endDate ?? $0.startDate) > start }
+            .filter { ($0.endDate ?? $0.startDate) > start }
             .sorted { $0.startDate < $1.startDate }
         if let event = events.first {
-            next = CalendarEvent(title: event.title ?? "Event", when: Self.when(event.startDate),
+            let when = event.isAllDay ? Self.dayFormatter.string(from: event.startDate) + " · All day" : Self.when(event.startDate)
+            next = CalendarEvent(title: event.title ?? "Event", when: when,
                                  dayName: Self.dayName(event.startDate), dayNumber: Self.dayNumber(event.startDate))
             scheduleRollover(at: event.endDate ?? event.startDate.addingTimeInterval(3600))
         } else {
@@ -65,6 +66,13 @@ final class CalendarModel: NSObject {
         f.dateFormat = "EEE d MMM · h:mm a"
         f.amSymbol = "am"
         f.pmSymbol = "pm"
+        return f
+    }()
+
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_AU")
+        f.dateFormat = "EEE d MMM"
         return f
     }()
 

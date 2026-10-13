@@ -27,6 +27,9 @@ final class HotKeys {
         }
     }
 
+    static let ctrlOpt = UInt32(controlKey | optionKey)
+    static let ctrlCmd = UInt32(controlKey | cmdKey)
+    static let ctrlShift = UInt32(controlKey | shiftKey)
     static let defaultAllow = Combo(keyCode: UInt32(kVK_ANSI_Y), modifiers: UInt32(controlKey | optionKey))
     static let defaultDeny = Combo(keyCode: UInt32(kVK_ANSI_N), modifiers: UInt32(controlKey | optionKey))
 

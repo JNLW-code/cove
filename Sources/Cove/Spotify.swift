@@ -49,6 +49,7 @@ final class SpotifyModel: NSObject {
         current.title = name
         current.artist = artist
         current.playing = state == "Playing"
+        track = current            // progress reads the playing flag, so store it first
         current.progress = progress
         if changed { current.artwork = cachedArtwork(for: id) }
         track = current
@@ -84,9 +85,17 @@ final class SpotifyModel: NSObject {
 
     // MARK: AppleScript path (Automation permission; only while the island is open)
 
-    /// When the island opens: if Spotify runs but we have no track yet, ask it once; then fetch artwork.
+    /// When the island opens: after the open animation, if Spotify runs but we have no track yet, ask it once; then fetch artwork.
     func islandOpened() {
         guard Self.isRunning else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            self?.askSpotify()
+        }
+    }
+
+    /// AppleScript is synchronous, so this runs only once the island has finished opening.
+    private func askSpotify() {
         if track == nil, let info = run("""
             tell application "Spotify"
                 if player state is stopped then return ""
