@@ -51,6 +51,9 @@ final class IslandController: NSObject {
     /// Called when the toolbar's settings button is pressed (the app opens its menu-bar menu).
     var onOpenMenu: (() -> Void)?
     private var hotKeys: HotKeys?
+    private var peekSources: PeekSources?
+    private var peekQueue: [(PeekContent, Double)] = []
+    private var recentPeekKeys: [String: Date] = [:]
 
     nonisolated(unsafe) private static weak var shared: IslandController?
 
@@ -104,6 +107,7 @@ final class IslandController: NSObject {
             if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
         }
         island.claude.onPeek = { [weak self] content, seconds in self?.showPeek(content, seconds: seconds) }
+        peekSources = PeekSources { [weak self] content, key in self?.showPeek(content, seconds: 3, key: key) }
         island.claude.onChanged = { [weak self] in self?.claudeChanged() }
         island.claude.onCardsChanged = { [weak self] in self?.cardsChanged() }
         hotKeys = HotKeys(onAllow: { [weak self] in self?.answerFront(allow: true) },
@@ -309,12 +313,22 @@ final class IslandController: NSObject {
         if island.mode == .expanded { show(baseMode, animation: Self.closeAnimation) }
     }
 
-    /// Shows one peek for `seconds`, then returns to the base mode. A new peek replaces the old one.
-    /// While the island is open the peek waits and shows when the island closes.
-    func showPeek(_ content: PeekContent, seconds: Double = 3) {
+    /// Shows one peek for `seconds`, then returns to the base mode. One peek at a time: a new one waits its turn.
+    /// The same `key` within 5 s counts as one peek. While the island is open the peek waits and shows when it closes.
+    func showPeek(_ content: PeekContent, seconds: Double = 3, key: String? = nil) {
+        if let key {
+            if let last = recentPeekKeys[key], Date().timeIntervalSince(last) < 5 { return }
+            recentPeekKeys[key] = Date()
+            if recentPeekKeys.count > 50 { recentPeekKeys = recentPeekKeys.filter { Date().timeIntervalSince($0.value) < 5 } }
+        }
+        if peekTask != nil || (island.mode == .expanded && island.peek != nil) {
+            if peekQueue.count < 4 { peekQueue.append((content, seconds)) }
+            return
+        }
         peekTask?.cancel()
         peekTask = nil
         island.peek = content
+        if Settings.sound { NSSound(named: "Pop")?.play() }
         if island.mode == .expanded {
             pendingPeekSeconds = seconds
             return
@@ -331,6 +345,11 @@ final class IslandController: NSObject {
             self.peekTask = nil
             self.island.peek = nil
             if self.island.mode == .peek { self.show(self.baseMode, animation: Self.closeAnimation) }
+            if !self.peekQueue.isEmpty {
+                let (next, seconds) = self.peekQueue.removeFirst()
+                try? await Task.sleep(for: .milliseconds(350))
+                self.showPeek(next, seconds: seconds)
+            }
         }
     }
 
