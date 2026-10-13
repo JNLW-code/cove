@@ -39,6 +39,9 @@ final class CalendarModel: NSObject {
 
     func load() {
         guard Permissions.calendar == .granted else { return }
+        store.refreshSourcesIfNecessary()
+        let names = store.calendars(for: .event).map { "\($0.source?.title ?? "?")/\($0.title)" }
+        Log.app.notice("Calendar sources: \(names.joined(separator: ", "), privacy: .public)")
         let start = Date()
         let end = Calendar.current.date(byAdding: .day, value: 7, to: start) ?? start
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
