@@ -122,11 +122,17 @@ final class IslandController: NSObject {
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(appearanceChanged), name: Notification.Name("AppleInterfaceThemeChangedNotification"), object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(accessibilityChanged), name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(screensChanged), name: NSWorkspace.didWakeNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(screensChanged), name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
     }
 
     // MARK: Modes and frames
 
     private func frame(for mode: Island.Mode) -> NSRect {
+        // Re-read the notch every time: screens come and go (external display, sleep) and a stale
+        // centre would put the island off screen.
+        let fresh = NotchGeometry.current()
+        if fresh.rect != notch.rect { notch = fresh; island.notchSize = fresh.size }
         let size = island.contentSize(for: mode)
         return NSRect(x: notch.centerX - size.width / 2, y: notch.top - size.height, width: size.width, height: size.height)
     }
