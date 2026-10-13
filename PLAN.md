@@ -1,7 +1,6 @@
 # Cove — plan
 
-**Status (13 Oct 2026):** step 3 built and checked by window bounds, CPU and demo run; visual check against the mockup is pending (Claude's screenshots are black until the Claude app restarts with Screen Recording).
-Next: James restarts Claude → I screenshot both themes, compare with the mockup, fix differences → step 4.
+**Status (14 Oct 2026):** steps 1–3 done and seen in screenshots (both themes). Next: step 4, the hook probe.
 Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
 Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
 
@@ -65,7 +64,7 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   `security find-identity -v` but codesign signs with it without any prompt and the designated requirement is stable:
   `identifier "com.jameswebster.cove" and certificate leaf = H"c51892c9…"`. No trust-settings change was needed. Entitlements: none (Hardened Runtime off).
   Screenshots from Claude still come out black: Screen Recording not granted yet.
-- [~] 3. Island shell: panel, 4 states, hover/reverse, themes, Theme.swift, Tile view, toolbar, edit mode, Demo menu. Built; done when screenshots in both themes match the picked drawing.
+- [x] 3. Island shell: panel, 4 states, hover/reverse, themes, Theme.swift, Tile view, toolbar, edit mode, Demo menu. Screenshots 14 Oct in both themes match the mockup (island, tiles, toolbar, edit badges, pill, peek). Fixed after seeing pixels: tile content was clipped to its own size, calendar date line, pill lobes widened to 112 (pill 403 wide).
   Checked 13 Oct: panel frames per mode (resting 179×32 at x 646, compact 387×32, peek 239×56, expanded 662×162), 0.0 % CPU at rest (6 samples),
   26 MB, 1–2 % while the pill animates, demo ran 28 s and returned to rest. Not yet seen: the actual pixels (Screen Recording), hover with a real mouse.
   How it works: `IslandController` owns an `IslandPanel` (NSPanel, nonactivating, level mainMenu+1, canJoinAllSpaces/fullScreenAuxiliary/stationary).

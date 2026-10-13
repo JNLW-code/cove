@@ -481,9 +481,9 @@ struct CalendarTileContent: View {
             Text(event.dayNumber).font(Theme.digits(28, .light)).foregroundStyle(palette.label)
                 .offset(x: 14, y: 28)
             Text(event.title).font(Theme.font(13, .bold)).foregroundStyle(palette.label)
-                .lineLimit(1).frame(width: 108, alignment: .leading).offset(x: 56, y: 15)
-            Text(event.when).font(Theme.digits(10.5)).foregroundStyle(palette.secondaryLabel)
-                .lineLimit(1).frame(width: 108, alignment: .leading).offset(x: 56, y: 33)
+                .lineLimit(1).frame(width: 110, alignment: .leading).offset(x: 54, y: 15)
+            Text(event.when).font(Theme.digits(10)).foregroundStyle(palette.secondaryLabel)
+                .lineLimit(1).frame(width: 110, alignment: .leading).offset(x: 54, y: 34)
         }
     }
 }
