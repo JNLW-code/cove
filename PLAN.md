@@ -70,6 +70,7 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   For a mode change it grows the panel to the union of old and new frames, animates the SwiftUI content (`island.mode`), then tightens the frame
   after the animation settles. Hover: NSTrackingArea on the content view, 250 ms one-shot Task → expand; exit → collapse (SwiftUI retargets mid-animation).
   Click on the island background pins it; a global mouse-down monitor (only while pinned) unpins on a click outside. Edit mode pins automatically.
+  /code-review (8 findings) fixed 13 Oct: pin leak, sample data leaking out of Demo, palette cached per theme, shadow timing, peeks queued while open, edit-mode unpin, drag persists once.
   Dev control channel for testing: `notifyutil -p com.jameswebster.cove.<cmd>` with cmd in theme.dark|theme.light|theme.system|demo.toggle|demo.next|
   show.resting|show.compact|show.peek|show.expanded|edit.toggle|pin.toggle (Darwin notify, public API; it only changes what is shown).
 - [ ] 4. Hook probe (throwaway hook in `.claude/settings.local.json`): the 4 questions answered in PLAN.md.
