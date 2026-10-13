@@ -108,6 +108,8 @@ final class Island {
     let volume = VolumeControl()
     let claude = ClaudeModel()
     let spotifyModel = SpotifyModel()
+    let weatherModel = WeatherModel()
+    let calendarModel = CalendarModel()
     var hotKeyAllow = HotKeys.defaultAllow.display
     var hotKeyDeny = HotKeys.defaultDeny.display
 

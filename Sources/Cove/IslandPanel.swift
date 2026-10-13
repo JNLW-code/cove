@@ -93,6 +93,16 @@ final class IslandController: NSObject {
             self.island.spotify = self.island.spotifyModel.track
             if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
         }
+        island.weatherModel.onChange = { [weak self] in
+            guard let self, !self.island.demo else { return }
+            self.island.weather = self.island.weatherModel.now
+            if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
+        }
+        island.calendarModel.onChange = { [weak self] in
+            guard let self, !self.island.demo else { return }
+            self.island.nextEvent = self.island.calendarModel.next
+            if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
+        }
         island.claude.onPeek = { [weak self] content, seconds in self?.showPeek(content, seconds: seconds) }
         island.claude.onChanged = { [weak self] in self?.claudeChanged() }
         island.claude.onCardsChanged = { [weak self] in self?.cardsChanged() }
@@ -195,10 +205,15 @@ final class IslandController: NSObject {
         }
     }
 
-    func expand() {
+    /// `byHover` is a real mouse-over; only then may a first-time permission prompt (Calendar) appear.
+    func expand(byHover: Bool = false) {
         guard island.mode != .expanded else { return }
         island.volume.refresh()
-        if !island.demo { island.spotifyModel.islandOpened() }
+        if !island.demo {
+            island.spotifyModel.islandOpened()
+            island.weatherModel.islandOpened()
+            if byHover, !island.hidden.contains(.calendar) { island.calendarModel.requestIfNeeded() }
+        }
         haptic()
         show(.expanded, animation: Self.openAnimation, settle: 0.55)
     }
@@ -219,7 +234,7 @@ final class IslandController: NSObject {
         hoverTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250), tolerance: .milliseconds(30))
             guard !Task.isCancelled, let self else { return }
-            self.expand()
+            self.expand(byHover: true)
         }
     }
 
@@ -346,6 +361,8 @@ final class IslandController: NSObject {
         island.demo = false
         island.claude.setDemoSessions([])
         island.spotify = island.spotifyModel.track
+        island.weather = island.weatherModel.now
+        island.nextEvent = island.calendarModel.next
         island.editing = false
         island.compact = nil
         island.peek = nil
