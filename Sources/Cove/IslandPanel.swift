@@ -198,6 +198,7 @@ final class IslandController: NSObject {
         haptic()
         let previous = NSWorkspace.shared.frontmostApplication
         if island.claude.replyThroughHook(session, text: trimmed) {
+            Log.app.notice("Reply delivered through the Stop hook")
             island.replyStatus = "Sent"
             collapse()
             if let previous, previous != NSRunningApplication.current, let url = previous.bundleURL {
@@ -210,9 +211,11 @@ final class IslandController: NSObject {
         Task { [weak self] in
             guard let self else { return }
             if let problem = await Typist.deliver(trimmed, to: session) {
+                Log.app.error("Reply not typed: \(problem, privacy: .public)")
                 self.island.replyStatus = problem
                 self.showPeek(PeekContent(symbol: "exclamationmark.triangle", icon: nil, tint: .needsYou, word: "Reply not sent", second: String(problem.prefix(60))), seconds: 4)
             } else {
+                Log.app.notice("Reply typed into the Claude app")
                 self.island.replyStatus = nil
                 session.lastMessage = nil
                 session.doneSeen = true
