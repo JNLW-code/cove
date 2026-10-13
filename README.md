@@ -27,8 +27,18 @@ make uninstall
 
 This quits Cove and removes `~/Applications/Cove.app`, the `build/` folder and `~/Library/Application Support/Cove`. The Claude Code hooks (step 5) will add their own lines here.
 
+## Demo and test controls
+
+The menu's **Demo** item cycles through every island state with sample data (pill, peeks, open island, edit mode). From a shell you can drive the same things:
+
+```bash
+notifyutil -p com.jameswebster.cove.show.expanded
+```
+
+Commands: `theme.dark`, `theme.light`, `theme.system`, `demo.toggle`, `demo.next`, `show.resting`, `show.compact`, `show.peek`, `show.expanded`, `edit.toggle`, `pin.toggle`. They only change what the island shows.
+
 ## Layout
 
-- `Sources/Cove/` the app. `Theme.swift` holds every colour and font.
+- `Sources/Cove/` the app. `Theme.swift` holds every colour and font; `IslandViews.swift` has the one `TileView` every tile uses; `IslandPanel.swift` is the window over the notch.
 - `Support/Info.plist` bundle settings (no Dock icon, deployment target 26.0).
 - `mockup/` the HTML design mockup. `refs/` the target screenshots. `PLAN.md` the plan, decisions and what's left.

@@ -1,6 +1,7 @@
 # Cove — plan
 
-**Status (13 Oct 2026):** steps 1–2 done. Next: step 3, the island shell.
+**Status (13 Oct 2026):** step 3 built and checked by window bounds, CPU and demo run; visual check against the mockup is pending (Claude's screenshots are black until the Claude app restarts with Screen Recording).
+Next: James restarts Claude → I screenshot both themes, compare with the mockup, fix differences → step 4.
 Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
 Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
 
@@ -62,7 +63,15 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   `security find-identity -v` but codesign signs with it without any prompt and the designated requirement is stable:
   `identifier "com.jameswebster.cove" and certificate leaf = H"c51892c9…"`. No trust-settings change was needed. Entitlements: none (Hardened Runtime off).
   Screenshots from Claude still come out black: Screen Recording not granted yet.
-- [ ] 3. Island shell: panel, 4 states, hover/reverse, themes, Theme.swift, Tile view, toolbar, edit mode, Demo menu. Done when screenshots in both themes match the picked drawing.
+- [~] 3. Island shell: panel, 4 states, hover/reverse, themes, Theme.swift, Tile view, toolbar, edit mode, Demo menu. Built; done when screenshots in both themes match the picked drawing.
+  Checked 13 Oct: panel frames per mode (resting 179×32 at x 646, compact 387×32, peek 239×56, expanded 662×162), 0.0 % CPU at rest (6 samples),
+  26 MB, 1–2 % while the pill animates, demo ran 28 s and returned to rest. Not yet seen: the actual pixels (Screen Recording), hover with a real mouse.
+  How it works: `IslandController` owns an `IslandPanel` (NSPanel, nonactivating, level mainMenu+1, canJoinAllSpaces/fullScreenAuxiliary/stationary).
+  For a mode change it grows the panel to the union of old and new frames, animates the SwiftUI content (`island.mode`), then tightens the frame
+  after the animation settles. Hover: NSTrackingArea on the content view, 250 ms one-shot Task → expand; exit → collapse (SwiftUI retargets mid-animation).
+  Click on the island background pins it; a global mouse-down monitor (only while pinned) unpins on a click outside. Edit mode pins automatically.
+  Dev control channel for testing: `notifyutil -p com.jameswebster.cove.<cmd>` with cmd in theme.dark|theme.light|theme.system|demo.toggle|demo.next|
+  show.resting|show.compact|show.peek|show.expanded|edit.toggle|pin.toggle (Darwin notify, public API; it only changes what is shown).
 - [ ] 4. Hook probe (throwaway hook in `.claude/settings.local.json`): the 4 questions answered in PLAN.md.
 - [ ] 5. Claude status: socket, hook.sh + helper, rows, steps, Working/Done/Waiting/Quiet, agents, process watch, fake-event script, settings.json snippet. Done when fake events drive 3 rows and a real session shows project · branch.
 - [ ] 6. Permission card: Allow/Deny, queue, hotkeys, 400 ms guard, long-command box, fail open, 60 s, Allowed/Denied, question/plan, blocked peek. Done when a real request is answered from the island and /security-review is clean.
