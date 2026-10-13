@@ -138,7 +138,7 @@ final class IslandController: NSObject {
         } else {
             hotKeys?.unregister()
             if island.mode == .expanded, !panel.frame.contains(NSEvent.mouseLocation) { collapse() }
-            else if island.mode == .expanded { show(.expanded, animation: Self.switchAnimation) }
+            else if island.mode == .expanded { setPinned(false); show(.expanded, animation: Self.switchAnimation) }
         }
     }
 

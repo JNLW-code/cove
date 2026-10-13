@@ -72,8 +72,11 @@ default:
     process.standardOutput = pipe
     process.standardError = FileHandle.nullDevice
     do { try process.run() } catch { return nil }
+    // The whole hook has 2 s; give git 1 s and move on without project/branch if it is slower.
+    let deadline = Date().addingTimeInterval(1)
+    while process.isRunning && Date() < deadline { usleep(5000) }
+    if process.isRunning { process.terminate(); return nil }
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
     guard process.terminationStatus == 0, let out = String(data: data, encoding: .utf8) else { return nil }
     let line = out.trimmingCharacters(in: .whitespacesAndNewlines)
     return line.isEmpty ? nil : line

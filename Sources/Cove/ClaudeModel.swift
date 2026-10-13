@@ -108,6 +108,7 @@ final class ClaudeSession: Identifiable {
     var inFlight: [String: (step: ClaudeStep, start: Date)] = [:]
     var endsWithQuestion = false
     var doneSeen = false
+    var lastAnswered = Date.distantPast
     var pendingStep: ClaudeStep?
     var lastStepApplied = Date.distantPast
 
@@ -206,7 +207,10 @@ final class ClaudeModel {
     func handle(_ m: HookMessage) {
         guard let id = m.string("session_id"), !id.isEmpty else { return }
         if m.event == "SessionEnd" { end(id); return }
-        if m.event == "SubagentStop", let agent = m.string("agent_id"), session(id)?.agents.contains(agent) == false { return }
+        if m.event == "SubagentStop" {
+            // The desktop app's own title agent stops without ever starting; ignore agents we never saw.
+            guard let known = session(id), let agent = m.string("agent_id"), known.agents.contains(agent) else { return }
+        }
         let s = session(id) ?? add(id)
         s.lastEvent = Date()
         if let cwd = m.string("cwd"), !cwd.isEmpty { s.cwd = cwd }
@@ -273,7 +277,9 @@ final class ClaudeModel {
             case "idle_prompt":
                 if case .done = s.state { s.state = .waiting(since: Date()) }
             case "permission_prompt":
-                if s.needsYou == nil, !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp) }
+                // Claude Code sends this ~6 s after the request even when the island already answered it.
+                let justAnswered = Date().timeIntervalSince(s.lastAnswered) < 10
+                if s.needsYou == nil, !justAnswered, !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp) }
             default: break
             }
         case "PermissionRequest":
@@ -341,6 +347,7 @@ final class ClaudeModel {
 
     private func apply(_ s: ClaudeSession, _ step: ClaudeStep) {
         s.lastStepApplied = Date()
+        if s.needsYou != nil { return }   // a pending card or question stays the loudest state
         if case .running(let since, _) = s.state { s.state = .running(since: since, step) } else { s.state = .working(step) }
     }
 
@@ -369,8 +376,9 @@ final class ClaudeModel {
     func answer(_ card: PermissionCard, allow: Bool) {
         socket?.reply(to: card.id, decision: allow ? "allow" : "deny")
         cards.removeAll { $0.id == card.id }
-        if let s = session(card.sessionID), !cards.contains(where: { $0.sessionID == s.id }) {
-            s.state = allow ? .working(.running) : .idle
+        if let s = session(card.sessionID) {
+            s.lastAnswered = Date()
+            if !cards.contains(where: { $0.sessionID == s.id }) { s.state = allow ? .working(.running) : .idle }
         }
         frontCardShownAt = Date()
         frontCardFullySeen = false

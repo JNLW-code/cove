@@ -30,8 +30,24 @@ struct SessionRow: View {
     var island: Island
 
     var body: some View {
+        if ages, !island.reduceMotion {
+            TimelineView(.periodic(from: .now, by: 30)) { _ in row }
+        } else {
+            row
+        }
+    }
+
+    /// States whose word carries an age ("Waiting · 3m", "Running · 14m") refresh every 30 s while on screen.
+    private var ages: Bool {
+        switch session.state {
+        case .waiting, .running: true
+        default: false
+        }
+    }
+
+    private var row: some View {
         let p = island.palette
-        HStack(spacing: 10) {
+        return HStack(spacing: 10) {
             leading(p)
             Text(session.label).font(Theme.font(12, .semibold)).foregroundStyle(p.label)
                 .lineLimit(1).truncationMode(.middle).layoutPriority(1)
