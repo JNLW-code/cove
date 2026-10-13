@@ -4,9 +4,10 @@ BUNDLE     := com.jameswebster.cove
 IDENTITY   := Cove Dev
 BUILD      := .build/release
 OUT        := build/$(APP).app
+HOOKS      := $(HOME)/.claude/island
 SWIFTFLAGS := -c release -Xswiftc -warnings-as-errors
 
-.PHONY: check build run install uninstall cert quit clean
+.PHONY: check build run install install-hooks uninstall cert quit clean fake
 
 ## check: build with warnings as errors (the only build the project does)
 check:
@@ -39,11 +40,25 @@ install: quit build
 	cp -R $(OUT) ~/Applications/$(APP).app
 	open ~/Applications/$(APP).app
 
-## uninstall: quit, remove the app and its data (see README for the settings.json lines)
+## install-hooks: put the hook script and helper in ~/.claude/island (then paste hooks/settings-snippet.json into ~/.claude/settings.json)
+install-hooks: check
+	mkdir -p $(HOOKS)
+	cp hooks/hook.sh $(HOOKS)/hook.sh
+	cp $(BUILD)/cove-hook $(HOOKS)/cove-hook
+	chmod 755 $(HOOKS)/hook.sh $(HOOKS)/cove-hook
+	@echo "Installed $(HOOKS)/hook.sh and cove-hook. Add the entries from hooks/settings-snippet.json to ~/.claude/settings.json."
+
+## fake: drive every Claude state through the socket (app must be running)
+fake:
+	scripts/fake-events.sh
+
+## uninstall: quit, remove the app, its data and the hook files (then take the island lines out of ~/.claude/settings.json)
 uninstall: quit
 	rm -rf ~/Applications/$(APP).app build
 	rm -rf "$(HOME)/Library/Application Support/$(APP)"
-	@echo "Removed ~/Applications/$(APP).app and its Application Support folder."
+	rm -rf $(HOOKS)
+	@echo "Removed ~/Applications/$(APP).app, its Application Support folder and $(HOOKS)."
+	@echo "Now delete every hook entry whose command contains .claude/island/hook.sh from ~/.claude/settings.json."
 
 ## cert: make the stable self-signed signing certificate once
 cert:

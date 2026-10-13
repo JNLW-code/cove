@@ -28,6 +28,32 @@ enum Demo {
         island.spotify = track
         island.weather = weather
         island.nextEvent = event
+        island.claude.setDemoSessions(sessions())
+    }
+
+    static func sessions() -> [ClaudeSession] {
+        let a = ClaudeSession(id: "demo-a")
+        a.project = "quoteflow-v3"; a.branch = "feat/notch"; a.term = "claude-desktop"
+        a.turnStart = Date().addingTimeInterval(-252); a.agents = ["x", "y", "z"]; a.state = .working(.editing)
+        a.filesChanged = ["a", "b"]
+        let b = ClaudeSession(id: "demo-b")
+        b.project = "qf-wt-rec"; b.branch = "rec-fix"; b.term = "Apple_Terminal"
+        b.state = .waiting(since: Date().addingTimeInterval(-180))
+        let c = ClaudeSession(id: "demo-c")
+        c.cwd = NSHomeDirectory(); c.state = .quiet
+        return [a, b, c]
+    }
+
+    static func doneCard(_ island: Island) {
+        guard let a = island.claude.sessions.first else { return }
+        a.doneSeen = false
+        a.agents = ["x", "y"]
+        a.state = .done(seconds: 252, files: 2)
+    }
+
+    static func questionCard(_ island: Island) {
+        guard let a = island.claude.sessions.first else { return }
+        a.state = .needsYou(.question)
     }
 
     static func clear(_ island: Island) {
@@ -47,6 +73,8 @@ enum Demo {
         { c in c.showPeek(blocked, seconds: 2.4) },
         { c in fill(c.island); c.show(.expanded, animation: IslandController.openAnimation, settle: 0.55) },
         { c in c.island.editing = true },
-        { c in c.island.editing = false; c.show(.resting, animation: IslandController.closeAnimation) },
+        { c in c.island.editing = false; doneCard(c.island); c.show(.expanded, animation: IslandController.switchAnimation) },
+        { c in questionCard(c.island); c.show(.expanded, animation: IslandController.switchAnimation) },
+        { c in c.island.claude.setDemoSessions([]); c.show(.resting, animation: IslandController.closeAnimation) },
     ]
 }

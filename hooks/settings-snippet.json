@@ -1,0 +1,134 @@
+{
+  "SessionStart": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" SessionStart",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "SessionEnd": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" SessionEnd",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "UserPromptSubmit": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" UserPromptSubmit",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "PreToolUse": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" PreToolUse",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" PostToolUse",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "SubagentStart": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" SubagentStart",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "SubagentStop": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" SubagentStop",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "Stop": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" Stop",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "PermissionDenied": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" PermissionDenied",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "Notification": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" Notification",
+          "timeout": 2
+        }
+      ]
+    }
+  ],
+  "PermissionRequest": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$HOME/.claude/island/hook.sh\" PermissionRequest",
+          "timeout": 75
+        }
+      ]
+    }
+  ]
+}

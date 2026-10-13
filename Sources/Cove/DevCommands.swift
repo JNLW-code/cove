@@ -6,7 +6,7 @@ import notify
 @MainActor
 final class DevCommands {
     static let names = ["theme.dark", "theme.light", "theme.system", "demo.toggle", "demo.next",
-                        "show.resting", "show.compact", "show.peek", "show.expanded", "edit.toggle", "pin.toggle"]
+                        "show.resting", "show.compact", "show.peek", "show.expanded", "open", "close", "edit.toggle", "pin.toggle"]
     private var tokens: [Int32] = []
 
     init(handler: @escaping @MainActor @Sendable (String) -> Void) {

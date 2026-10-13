@@ -11,6 +11,8 @@ final class IslandActions {
     func toggleTheme() { controller?.toggleTheme() }
     func openMenu() { controller?.openMenu() }
     func open(_ app: RecentApps.Entry) { controller?.island.recentApps.open(app) }
+    func rowClicked(_ session: ClaudeSession) { controller?.rowClicked(session) }
+    func answer(_ card: PermissionCard, allow: Bool) { controller?.island.claude.answer(card, allow: allow) }
     func spotify(_ command: SpotifyCommand) { controller?.spotify(command) }
 }
 
@@ -85,7 +87,7 @@ struct IslandRoot: View {
     @ViewBuilder private var blackContent: some View {
         switch island.mode {
         case .compact:
-            if let content = island.compact {
+            if let content = island.compactContent {
                 CompactLobes(content: content, island: island).transition(.opacity)
             }
         case .peek:
@@ -238,8 +240,20 @@ struct ExpandedIsland: View {
                 .contentShape(shape)
                 .onTapGesture { actions.togglePin() }
             ToolbarRow(island: island, actions: actions)
-            TilesRow(island: island, actions: actions)
+            if let session = island.cardSession {
+                ClaudeCard(session: session, island: island, actions: actions)
+                    .padding(.top, island.notchSize.height + 18)
+            } else {
+                VStack(spacing: 8) {
+                    if !island.claude.sessions.isEmpty {
+                        ClaudeStrip(island: island, actions: actions)
+                    }
+                    if !island.visibleTiles.isEmpty {
+                        TilesRow(island: island, actions: actions)
+                    }
+                }
                 .padding(.top, island.notchSize.height + 18)
+            }
         }
         .frame(width: Island.expandedWidth, height: island.expandedHeight)
     }

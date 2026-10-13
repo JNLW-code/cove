@@ -106,6 +106,7 @@ final class Island {
     let timer = FocusTimer()
     let recentApps = RecentApps()
     let volume = VolumeControl()
+    let claude = ClaudeModel()
 
     init() {
         let defaults = UserDefaults.standard
@@ -164,7 +165,39 @@ final class Island {
 
     var pillWidth: CGFloat { notchSize.width + 2 * Self.lobeWidth }
 
-    var expandedHeight: CGFloat { notchSize.height + 18 + 94 + 18 }
+    static let rowHeight: CGFloat = 28
+    static let cardHeight: CGFloat = 111
+
+    /// The session whose card takes over the island: needs you, or a Done not yet seen.
+    var cardSession: ClaudeSession? {
+        guard let s = claude.mostUrgent else { return nil }
+        return s.needsYou != nil || s.unseenDone ? s : nil
+    }
+
+    var expandedHeight: CGFloat {
+        if cardSession != nil { return notchSize.height + 18 + Self.cardHeight + 18 }
+        let rows = claude.sessions.count
+        let strip: CGFloat = rows > 0 ? CGFloat(rows) * Self.rowHeight + 8 : 0
+        let tiles: CGFloat = visibleTiles.isEmpty ? 0 : 94 + 18
+        return notchSize.height + 18 + strip + tiles + (visibleTiles.isEmpty ? 10 : 0)
+    }
+
+    /// What the pill shows: the demo's content, else the most urgent Claude session plus a count of the others.
+    var compactContent: CompactContent? {
+        if let compact { return compact }
+        guard let s = claude.mostUrgent else { return nil }
+        let others = claude.sessions.filter { $0.id != s.id && $0.urgency > 0 }.count
+        let count = others > 0 ? "\(others)" : nil
+        switch s.state {
+        case .needsYou: return CompactContent(kind: .needsYou, word: "Needs you", detail: s.label, count: count)
+        case .done(let seconds, let files):
+            let detail = files > 0 ? "\(files) file\(files == 1 ? "" : "s")" : s.label
+            return CompactContent(kind: .done, word: s.endsWithQuestion ? "Waiting for you" : "Done · \(durationText(seconds))", detail: detail, count: count)
+        case .working(let step), .running(_, let step):
+            return CompactContent(kind: .working, word: step.word, detail: s.label, count: count)
+        default: return nil
+        }
+    }
 
     var peekHeight: CGFloat { notchSize.height + (peek?.second == nil ? 24 : 40) }
 

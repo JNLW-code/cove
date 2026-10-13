@@ -27,6 +27,18 @@ make uninstall
 
 This quits Cove and removes `~/Applications/Cove.app`, the `build/` folder and `~/Library/Application Support/Cove`. The Claude Code hooks (step 5) will add their own lines here.
 
+## Claude Code hooks
+
+```bash
+make install-hooks
+```
+
+That puts `hook.sh` and the `cove-hook` helper in `~/.claude/island/`. Then add the entries from [hooks/settings-snippet.json](hooks/settings-snippet.json) inside the existing `"hooks"` object of `~/.claude/settings.json` (merge into the `SessionStart` and `PostToolUse` arrays that are already there; add the other events as new keys). Every hook runs the same one-line script; the helper sends a trimmed event to Cove's socket in `~/Library/Application Support/Cove/` and exits. Only `PermissionRequest` waits for an answer, at most 60 s, and gives up silently if Cove isn't running or you're away.
+
+To remove: `make uninstall`, then delete every hook entry whose command contains `.claude/island/hook.sh` from `~/.claude/settings.json`.
+
+To see it without real sessions: `make fake` drives three sessions through every state (needs Cove running).
+
 ## Demo and test controls
 
 The menu's **Demo** item cycles through every island state with sample data (pill, peeks, open island, edit mode). From a shell you can drive the same things:

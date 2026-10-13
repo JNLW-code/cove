@@ -41,6 +41,8 @@ final class IslandController: NSObject {
 
     private var hoverTask: Task<Void, Never>?
     private var tightenTask: Task<Void, Never>?
+    /// Frames shown since the panel was last tightened; the panel covers all of them until the animation settles.
+    private var pendingFrames: [NSRect] = []
     private var peekTask: Task<Void, Never>?
     private var pendingPeekSeconds: Double?
     private var demoTask: Task<Void, Never>?
@@ -85,6 +87,13 @@ final class IslandController: NSObject {
         host.onExit = { [weak self] in self?.mouseExited() }
         panel.orderFrontRegardless()
 
+        island.claude.onPeek = { [weak self] content, seconds in self?.showPeek(content, seconds: seconds) }
+        island.claude.onChanged = { [weak self] in self?.claudeChanged() }
+        let socket = ClaudeSocket(onMessage: { [weak self] message in self?.island.claude.handle(message) },
+                                  onRequestClosed: { [weak self] id in self?.island.claude.requestClosed(id) })
+        island.claude.socket = socket
+        do { try socket.start() } catch { Log.app.error("Socket failed: \(error.localizedDescription, privacy: .public)") }
+
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(appearanceChanged), name: Notification.Name("AppleInterfaceThemeChangedNotification"), object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(accessibilityChanged), name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
@@ -100,8 +109,22 @@ final class IslandController: NSObject {
     /// The mode the island falls back to when nothing is open.
     private var baseMode: Island.Mode {
         if island.peek != nil { return .peek }
-        if island.compact != nil { return .compact }
+        if island.compactContent != nil { return .compact }
         return .resting
+    }
+
+    /// Claude sessions changed: refresh the pill, or the open island's size.
+    private func claudeChanged() {
+        if island.mode == .resting || island.mode == .compact {
+            if island.mode != baseMode { show(baseMode, animation: Self.switchAnimation) }
+        } else if island.mode == .expanded {
+            show(.expanded, animation: Self.switchAnimation)
+        }
+    }
+
+    func rowClicked(_ session: ClaudeSession) {
+        island.claude.bringForward(session)
+        collapse()
     }
 
     /// Grows the panel to cover old and new, animates the content, then tightens the frame when the animation is done.
@@ -109,7 +132,9 @@ final class IslandController: NSObject {
         tightenTask?.cancel()
         if mode != .expanded { setPinned(false) }
         let target = frame(for: mode)
-        let union = panel.frame.union(target)
+        if pendingFrames.isEmpty { pendingFrames = [panel.frame] }
+        pendingFrames.append(target)
+        let union = pendingFrames.dropFirst().reduce(pendingFrames[0]) { $0.union($1) }
         if union != panel.frame { panel.setFrame(union, display: true) }
         if mode == .expanded { panel.hasShadow = true }
         if let animation, !island.reduceMotion {
@@ -122,6 +147,7 @@ final class IslandController: NSObject {
         tightenTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(Int(settle * 1000)), tolerance: .milliseconds(20))
             guard !Task.isCancelled, let self, self.island.mode == mode else { return }
+            self.pendingFrames = []
             self.panel.setFrame(target, display: true)
             self.panel.hasShadow = mode == .expanded
             self.panel.invalidateShadow()
@@ -138,6 +164,7 @@ final class IslandController: NSObject {
     func collapse() {
         island.editing = false
         setPinned(false)
+        island.claude.markDoneSeen()
         show(baseMode, animation: Self.closeAnimation)
         if let seconds = pendingPeekSeconds { startPeekTimer(seconds) }
     }
@@ -274,6 +301,7 @@ final class IslandController: NSObject {
         peekTask = nil
         pendingPeekSeconds = nil
         island.demo = false
+        island.claude.setDemoSessions([])
         island.editing = false
         island.compact = nil
         island.peek = nil

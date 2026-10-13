@@ -123,6 +123,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "show.compact": controller.holdDemo(); controller.closeIfExpanded(); controller.setCompact(Demo.working)
         case "show.peek": controller.holdDemo(); controller.closeIfExpanded(); controller.showPeek(Demo.dnd)
         case "show.expanded": controller.holdDemo(); Demo.fill(island); controller.show(.expanded, animation: IslandController.openAnimation, settle: 0.55)
+        case "open": controller.expand()
+        case "close": controller.collapse()
         case "edit.toggle": controller.toggleEdit()
         case "pin.toggle": controller.togglePin()
         default: break

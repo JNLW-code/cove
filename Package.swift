@@ -10,5 +10,11 @@ let package = Package(
             path: "Sources/Cove",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // The hook helper: reads one Claude Code hook event on stdin, forwards the little the app needs, exits.
+        .executableTarget(
+            name: "cove-hook",
+            path: "Sources/CoveHook",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
     ]
 )
