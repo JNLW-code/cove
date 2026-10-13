@@ -1,6 +1,6 @@
 # Cove — plan
 
-**Status (13 Oct 2026):** mockup published, waiting for James's picks (colour set, pill, working animation).
+**Status (13 Oct 2026):** step 1 done (picks B / A / A). Step 2 skeleton in progress.
 Done: refs, Mac facts, measurements, mockup v1 at https://claude.ai/artifact/CQbY8iEvUZZ6R55xrWAwyr (source: mockup/cove-mockup.html).
 Left: steps 2–12. Blocked: Screen Recording for Claude (James grants); picks for step 1.
 
@@ -41,6 +41,7 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   `com.spotify.client.PlaybackStateChanged`; controls/artwork/position via AppleScript only while open and only if Spotify runs.
   Artwork comes from Spotify's own CDN (`artwork url`), cached locally. That is one more outbound request (to Spotify) — flagged to James.
 - Clicking a Claude row brings Claude forward and closes the island.
+- Mockup picks (13 Oct): **Colours B Lifted** (dark: island underPageBackground #282828, tiles secondarySystemFill → #383838; light: island windowBackground #FFFFFF, tiles → #EBEBEB; Deny = unemphasizedSelectedContentBackground). **Pill A Wings** (two lobes level with the menu bar, 371 × 32). **Working animation A Walk** (3 accent cells wander on the 5×5 grid, one move per 300 ms, only while working and visible).
 
 ## Measurements from the refs (pt, notch = 179 pt wide)
 - Ref 1 scale 1.866 px/pt. Island 662 × 197 (197 included ~54 pt of lyrics; without lyrics ≈ 162), radius ≈ 35, rim 1 pt lighter.
@@ -54,7 +55,7 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
   separator white 10 %, accent #007AFF, orange #FF9230, green #30D158, red #FF4245. Light: window #FFFFFF, fills black at 10/8/5/3/1 %, label black 85/50/26 %.
 
 ## Steps
-- [~] 1. Mockup artifact (all states, both themes, options A/B/C). Published; done when James has picked.
+- [x] 1. Mockup artifact (all states, both themes, options A/B/C). Published; James picked B / A / A.
   Options offered: Colours A Quiet / B Lifted (rec) / C Crisp. Pill A Wings (rec) / B Chin / C Lobe. Working anim A Walk (rec) / B Wave / C Ring.
 - [ ] 2. Skeleton: package, Makefile (check/run/install/uninstall), cert, menu-bar icon, no Dock icon. Done when `make check` is clean and `make run` shows the icon at 0% CPU.
 - [ ] 3. Island shell: panel, 4 states, hover/reverse, themes, Theme.swift, Tile view, toolbar, edit mode, Demo menu. Done when screenshots in both themes match the picked drawing.
