@@ -236,6 +236,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "edit.toggle": controller.toggleEdit()
         case "pin.toggle": controller.togglePin()
         case "menu.open": statusItem?.button?.performClick(nil)
+        case "calendar.request": island.calendarModel.requestIfNeeded()
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         default: break

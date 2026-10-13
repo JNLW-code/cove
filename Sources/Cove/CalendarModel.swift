@@ -19,12 +19,19 @@ final class CalendarModel: NSObject {
 
     /// First real use of the tile: ask once, explain why in the system prompt text (Info.plist).
     func requestIfNeeded() {
-        guard !asked, Permissions.calendar == .notAsked else { return }
+        let state = Permissions.calendar
+        Log.app.notice("Calendar access: \(String(describing: state), privacy: .public), asked before: \(self.asked)")
+        guard !asked, state == .notAsked else { return }
         asked = true
         Task { [weak self] in
             guard let self else { return }
-            let granted = (try? await self.store.requestFullAccessToEvents()) ?? false
-            if granted { self.load() }
+            do {
+                let granted = try await self.store.requestFullAccessToEvents()
+                Log.app.notice("Calendar access answered: \(granted)")
+                if granted { self.load() }
+            } catch {
+                Log.app.error("Calendar access request failed: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -38,6 +45,7 @@ final class CalendarModel: NSObject {
         let events = store.events(matching: predicate)
             .filter { ($0.endDate ?? $0.startDate) > start }
             .sorted { $0.startDate < $1.startDate }
+        Log.app.notice("Calendar: \(events.count) upcoming events in 7 days")
         if let event = events.first {
             let when = event.isAllDay ? Self.dayFormatter.string(from: event.startDate) + " · All day" : Self.when(event.startDate)
             next = CalendarEvent(title: event.title ?? "Event", when: when,
