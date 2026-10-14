@@ -11,6 +11,7 @@ struct ClaudeStrip: View {
             ForEach(island.claude.active) { session in
                 SessionRow(session: session, island: island, actions: actions)
                     .contentShape(Rectangle())
+                    .hoverShade(radius: 8, inset: -6)
                     .onTapGesture { actions.rowClicked(session) }
                     .contextMenu {
                         Button(session.note == nil ? "Add a note…" : "Edit the note…") { actions.editNote(for: session) }

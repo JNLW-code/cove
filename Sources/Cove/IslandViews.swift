@@ -31,11 +31,92 @@ final class IslandActions {
     func nowPlaying(_ command: SpotifyCommand) { controller?.nowPlaying(command) }
 }
 
-/// Press feedback on every button: scale 0.97 in 120 ms.
+/// The colour a hover shade is drawn in (the theme's label colour at low opacity), set once per island surface.
+private struct HoverShadeKey: EnvironmentKey {
+    static let defaultValue: Color = .primary
+}
+
+extension EnvironmentValues {
+    var hoverShade: Color {
+        get { self[HoverShadeKey.self] }
+        set { self[HoverShadeKey.self] = newValue }
+    }
+}
+
+/// A soft shade behind anything clickable while the mouse is over it, darker while pressed. Like every macOS control.
+struct HoverShade: ViewModifier {
+    var radius: CGFloat
+    var inset: CGFloat
+    var pressed: Bool
+    @Environment(\.hoverShade) private var shade
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                // On top, not behind: many buttons have their own solid fill, and the shade must tint that too.
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(shade.opacity(hovering ? (pressed ? 0.16 : 0.09) : 0))
+                    .padding(-inset)
+                    .allowsHitTesting(false)
+            )
+            .overlay(HoverTracker(hovering: $hovering).padding(-inset))
+            .animation(.easeOut(duration: 0.15), value: hovering)
+    }
+}
+
+/// Hover tracking that works while Cove is not the active app (SwiftUI's `onHover` only fires in an active app).
+/// An invisible AppKit view with an always-active tracking area; clicks pass straight through it.
+struct HoverTracker: NSViewRepresentable {
+    @Binding var hovering: Bool
+
+    func makeNSView(context: Context) -> TrackingView {
+        let view = TrackingView()
+        view.onChange = { hovering = $0 }
+        return view
+    }
+
+    func updateNSView(_ view: TrackingView, context: Context) {
+        view.onChange = { hovering = $0 }
+    }
+
+    final class TrackingView: NSView {
+        var onChange: ((Bool) -> Void)?
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            trackingAreas.forEach(removeTrackingArea)
+            addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                           owner: self, userInfo: nil))
+        }
+
+        override func mouseEntered(with event: NSEvent) { onChange?(true) }
+        override func mouseExited(with event: NSEvent) { onChange?(false) }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window == nil { onChange?(false) }
+        }
+    }
+}
+
+extension View {
+    /// Hover shade for things that are clickable but not buttons (rows, tap areas).
+    func hoverShade(radius: CGFloat = 8, inset: CGFloat = 0) -> some View {
+        modifier(HoverShade(radius: radius, inset: inset, pressed: false))
+    }
+}
+
+/// Every button: hover shade, then scale 0.97 while pressed.
 struct PressStyle: ButtonStyle {
+    var radius: CGFloat = 7
+    var inset: CGFloat = 0
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .contentShape(Rectangle())
+            .modifier(HoverShade(radius: radius, inset: inset, pressed: configuration.isPressed))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
@@ -87,10 +168,12 @@ struct IslandRoot: View {
         ZStack(alignment: .top) {
             if island.mode == .expanded {
                 ExpandedIsland(island: island, actions: actions)
+                    .environment(\.hoverShade, island.palette.label)
                     .transition(.scale(scale: 0.27, anchor: .top).combined(with: .opacity))
                     .zIndex(1)
             } else if island.mode == .launchpad {
                 LaunchpadView(island: island, actions: actions)
+                    .environment(\.hoverShade, island.palette.matteLabel)
                     .transition(.scale(scale: 0.94, anchor: .top).combined(with: .opacity))
                     .zIndex(1)
             }
@@ -305,7 +388,7 @@ struct ToolbarRow: View {
                     Button { actions.open(app) } label: {
                         Image(nsImage: app.icon).resizable().frame(width: 16, height: 16).frame(width: 22, height: 22)
                     }
-                    .buttonStyle(PressStyle())
+                    .buttonStyle(PressStyle(radius: 6))
                     .help(app.name)
                 }
             }

@@ -226,7 +226,7 @@ struct LaunchpadFolderCell: View {
             .padding(.vertical, 2)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(radius: 12))
     }
 }
 
@@ -257,7 +257,7 @@ struct LaunchpadCell: View {
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(highlighted ? p.matteTile : .clear))
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(radius: 12))
         .help(app.name)
     }
 }
@@ -425,7 +425,7 @@ struct TogglesWidget: View {
                 .frame(height: 40)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? p.matteAccent : p.matteSecondary.opacity(0.18)))
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(PressStyle(radius: 10))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
         .help(help)
