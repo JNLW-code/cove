@@ -241,6 +241,10 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }
+        case "test.answerq":   // first option of every question
+            if let q = island.claude.frontQuestion {
+                controller.answerQuestion(q, answers: Dictionary(q.questions.map { ($0.text, $0.options[0].label) }, uniquingKeysWith: { a, _ in a }))
+            }
         default: break
         }
     }

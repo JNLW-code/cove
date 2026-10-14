@@ -161,13 +161,12 @@ final class IslandController: NSObject {
     /// A card arrived or the front one changed: open the island on it, keep it open, arm the shortcuts.
     private func cardsChanged() {
         island.cardIndex = 0
-        if island.claude.frontCard != nil {
-            hotKeys?.register()
+        if island.claude.frontCard != nil { hotKeys?.register() } else { hotKeys?.unregister() }
+        if island.claude.frontCard != nil || island.claude.frontQuestion != nil {
             if island.mode != .expanded { show(.expanded, animation: Self.openAnimation, settle: 0.55); haptic() }
             else { show(.expanded, animation: Self.switchAnimation) }
             setPinned(true)
         } else {
-            hotKeys?.unregister()
             if island.mode == .expanded, !panel.frame.contains(NSEvent.mouseLocation) { collapse() }
             else if island.mode == .expanded { setPinned(false); show(.expanded, animation: Self.switchAnimation) }
         }
@@ -212,6 +211,17 @@ final class IslandController: NSObject {
         if island.claude.frontCard == nil { showPeek(content, seconds: 1.5) }
     }
 
+    /// An answer picked on a question card: back through the waiting hook, and Claude carries on with it.
+    func answerQuestion(_ card: QuestionCard, answers: [String: String]) {
+        guard !island.claude.frontCardGuarded, island.displayedQuestion?.id == card.id else { return }
+        haptic()
+        island.claude.answer(card, answers: answers)
+        Log.app.notice("Question answered from the island")
+        if island.claude.frontCard == nil, island.claude.frontQuestion == nil {
+            showPeek(PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Answered", second: nil), seconds: 1.5)
+        }
+    }
+
     /// A reply typed on the card. Through the waiting hook if Claude just stopped, else typed into the app.
     func sendReply(_ text: String, to session: ClaudeSession) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -253,6 +263,7 @@ final class IslandController: NSObject {
     }
 
     func rowClicked(_ session: ClaudeSession) {
+        island.claude.releaseQuestion(for: session)   // Open on a question: Claude asks in the app instead
         island.claude.bringForward(session)
         collapse()
     }

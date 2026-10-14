@@ -160,8 +160,9 @@ guard written == line.count else { finish() }
 let waitsForReply = event == "Stop" && message["request_id"] != nil
 guard event == "PermissionRequest" || waitsForReply else { finish() }
 
-// AskUserQuestion and ExitPlanMode are never answered from the island; the app was told, Claude asks as usual.
-if toolName == "AskUserQuestion" || toolName == "ExitPlanMode" { finish() }
+// ExitPlanMode is never answered from the island; the app was told, Claude asks as usual.
+// AskUserQuestion waits like a permission: the island can send the chosen answers back.
+if toolName == "ExitPlanMode" { finish() }
 
 // Away (screen locked, or no input for a minute) → let Claude's own prompt and the phone handle it.
 if let session = CGSessionCopyCurrentDictionary() as? [String: Any],
@@ -194,6 +195,15 @@ if waitsForReply {
     if let text = replyObject["reply"] as? String, !text.isEmpty,
        let out = try? JSONSerialization.data(withJSONObject: ["decision": "block", "reason": text]),
        let line = String(data: out, encoding: .utf8) { print(line) }
+    finish()
+}
+// A question answered in the island: allow the tool with the answers filled in (the shape the hooks docs give for AskUserQuestion).
+if toolName == "AskUserQuestion" {
+    guard let answers = replyObject["answers"] as? [String: String], !answers.isEmpty, var updated = toolInput else { finish() }
+    updated["answers"] = answers
+    let output: [String: Any] = ["hookSpecificOutput": ["hookEventName": "PermissionRequest",
+                                                       "decision": ["behavior": "allow", "updatedInput": updated]]]
+    if let out = try? JSONSerialization.data(withJSONObject: output), let line = String(data: out, encoding: .utf8) { print(line) }
     finish()
 }
 guard let decision = replyObject["decision"] as? String else { finish() }

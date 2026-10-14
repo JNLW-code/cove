@@ -149,9 +149,14 @@ final class ClaudeSocket {
         send(["request_id": requestID, "reply": text], to: requestID)
     }
 
+    /// Answers a waiting AskUserQuestion hook: question text → chosen label(s).
+    func reply(to requestID: String, answers: [String: String]) {
+        send(["request_id": requestID, "answers": answers], to: requestID)
+    }
+
     func isPending(_ requestID: String) -> Bool { pending[requestID] != nil }
 
-    private func send(_ object: [String: String], to requestID: String) {
+    private func send(_ object: [String: Any], to requestID: String) {
         guard let fd = pending[requestID], let connection = connections[fd],
               var data = try? JSONSerialization.data(withJSONObject: object) else { return }
         data.append(0x0A)

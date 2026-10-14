@@ -193,6 +193,18 @@ final class Island {
         return claude.card(for: s)
     }
 
+    /// The question card on screen, if the shown session has one.
+    var displayedQuestion: QuestionCard? {
+        guard let s = cardSession else { return nil }
+        return claude.question(for: s)
+    }
+
+    static let questionOption: CGFloat = 32
+    /// Title, the question (2 lines), one row per option, a line to type an answer, project · branch.
+    static func questionCardHeight(_ card: QuestionCard) -> CGFloat {
+        158 + CGFloat(card.questions.map(\.options.count).max() ?? 0) * questionOption
+    }
+
     static let longCommandBox: CGFloat = 128
     static let replyRow: CGFloat = 40
 
@@ -203,6 +215,7 @@ final class Island {
 
     var cardHeight: CGFloat {
         if let card = displayedCard { return Self.cardHeight + (Self.isLong(card.command) ? Self.longCommandBox : 0) }
+        if let question = displayedQuestion { return Self.questionCardHeight(question) }
         if let s = cardSession, case .done = s.state { return Self.cardHeight + (s.lastMessage != nil ? Self.longCommandBox : 0) + Self.replyRow }
         return Self.cardHeight
     }

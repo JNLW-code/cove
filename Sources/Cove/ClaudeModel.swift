@@ -72,6 +72,48 @@ struct PermissionCard: Identifiable, Equatable {
     let received: Date
 }
 
+/// One of Claude's multiple-choice questions (AskUserQuestion), as its tool input describes it.
+struct ClaudeQuestion: Equatable {
+    struct Option: Equatable {
+        let label: String
+        let description: String
+    }
+    let text: String
+    let header: String
+    let options: [Option]
+    let multiSelect: Bool
+
+    /// The `questions` array of the tool input; nil when the shape is not what we expect (Claude then asks in the app).
+    static func parse(inputJSON: String?) -> [ClaudeQuestion]? {
+        guard let inputJSON, let data = inputJSON.data(using: .utf8),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let list = object["questions"] as? [[String: Any]], !list.isEmpty, list.count <= 4 else { return nil }
+        var out: [ClaudeQuestion] = []
+        for q in list {
+            guard let text = q["question"] as? String, !text.isEmpty, let options = q["options"] as? [[String: Any]] else { return nil }
+            let parsed = options.compactMap { o -> Option? in
+                guard let label = o["label"] as? String, !label.isEmpty else { return nil }
+                return Option(label: label, description: (o["description"] as? String) ?? "")
+            }
+            guard !parsed.isEmpty, parsed.count <= 6 else { return nil }
+            out.append(ClaudeQuestion(text: text, header: (q["header"] as? String) ?? "", options: parsed,
+                                      multiSelect: (q["multiSelect"] as? Bool) ?? false))
+        }
+        return out
+    }
+}
+
+/// A question waiting for an answer from the island; its hook connection stays open until answered or released.
+struct QuestionCard: Identifiable, Equatable {
+    let id: String          // request_id
+    let sessionID: String
+    let agentID: String?
+    let inputKey: String?
+    let questions: [ClaudeQuestion]
+
+    static let demoID = "demo-question"
+}
+
 /// One Claude Code session, keyed by session_id.
 @MainActor
 @Observable
@@ -212,6 +254,9 @@ final class ClaudeModel {
         return !Island.isLong(card.command) || frontCardFullySeen
     }
     var frontCard: PermissionCard? { cards.first }
+    private(set) var questions: [QuestionCard] = []
+    var frontQuestion: QuestionCard? { questions.first }
+    func question(for s: ClaudeSession) -> QuestionCard? { questions.first { $0.sessionID == s.id } }
     var frontCardGuarded: Bool { Date().timeIntervalSince(frontCardShownAt) < Self.guardSeconds }
     var socket: ClaudeSocket?
 
@@ -285,6 +330,9 @@ final class ClaudeModel {
             if let path = m.string("file_path") { s.filesChanged.insert(path) }
             if let key = m.string("input_key") { settleCards(for: s.id, agent: agent, inputKey: key) }
             if case .running(_, let step) = s.state { s.state = .working(step) }
+            // Answered in the app (or on the phone): the row goes back to work instead of saying "Has a question" until Stop.
+            if agent == nil, let tool = m.string("tool_name"), tool == "AskUserQuestion" || tool == "ExitPlanMode",
+               s.needsYou == .question || s.needsYou == .plan { s.attentionSeen = true; s.state = .working(.thinking) }
         case "PermissionDenied":
             if let key = m.string("input_key") { settleCards(for: s.id, agent: agent, inputKey: key) }
             let what = m.string("command") ?? m.string("file_path") ?? (m.string("tool_name") ?? "a tool")
@@ -322,7 +370,17 @@ final class ClaudeModel {
         case "PermissionRequest":
             guard let requestID = m.string("request_id") else { break }
             let tool = m.string("tool_name") ?? ""
-            if tool == "AskUserQuestion" { s.state = .needsYou(.question); s.attentionSeen = false; break }
+            if tool == "AskUserQuestion" {
+                s.state = .needsYou(.question); s.attentionSeen = false
+                if let parsed = ClaudeQuestion.parse(inputJSON: m.string("tool_input")) {
+                    questions.append(QuestionCard(id: requestID, sessionID: s.id, agentID: agent, inputKey: m.string("input_key"), questions: parsed))
+                    if questions.count == 1 { frontCardShownAt = Date() }
+                    onCardsChanged?()
+                } else {
+                    socket?.close(request: requestID)   // not a shape we can show: let Claude ask in the app now
+                }
+                break
+            }
             if tool == "ExitPlanMode" { s.state = .needsYou(.plan); s.attentionSeen = false; break }
             let command = Self.describe(tool: tool, inputJSON: m.string("tool_input"))
             cards.append(PermissionCard(id: requestID, sessionID: s.id, agentID: agent, tool: tool,
@@ -437,6 +495,16 @@ final class ClaudeModel {
 
     /// A card is settled when its own request finished (same agent, tool and input) or its session stopped or ended.
     private func settleCards(for sessionID: String, agent: String? = nil, inputKey: String? = nil) {
+        let settledQuestions = questions.filter { q in
+            guard q.sessionID == sessionID else { return false }
+            guard let inputKey else { return true }
+            return q.agentID == agent && q.inputKey == inputKey
+        }
+        if !settledQuestions.isEmpty {
+            questions.removeAll { q in settledQuestions.contains { $0.id == q.id } }
+            for q in settledQuestions { socket?.close(request: q.id) }
+            onCardsChanged?()
+        }
         let settled = cards.filter { card in
             guard card.sessionID == sessionID else { return false }
             guard let inputKey else { return true }
@@ -468,9 +536,40 @@ final class ClaudeModel {
         onChanged?()
     }
 
+    /// Answers picked on a question card go back down the waiting hook; Claude carries on with them.
+    func answer(_ card: QuestionCard, answers: [String: String]) {
+        socket?.reply(to: card.id, answers: answers)
+        questions.removeAll { $0.id == card.id }
+        if let s = session(card.sessionID) {
+            s.lastAnswered = Date()
+            s.attentionSeen = true
+            if s.needsYou == .question, !questions.contains(where: { $0.sessionID == s.id }) { s.state = .working(.thinking) }
+        }
+        frontCardShownAt = Date()
+        onCardsChanged?()
+        onChanged?()
+    }
+
+    /// Open or × on a question: the island steps aside, the hook exits with no decision and Claude asks in the app.
+    func releaseQuestion(for s: ClaudeSession) {
+        let mine = questions.filter { $0.sessionID == s.id }
+        guard !mine.isEmpty else { return }
+        questions.removeAll { $0.sessionID == s.id }
+        for q in mine { socket?.close(request: q.id) }
+        frontCardShownAt = Date()
+        onCardsChanged?()
+    }
+
     /// The hook gave up (timed out, or Claude went on without us): drop the card, Claude is asking in the app now.
     func requestClosed(_ requestID: String) {
         if let s = live.first(where: { $0.replyRequestID == requestID }) { s.replyRequestID = nil; return }
+        if questions.contains(where: { $0.id == requestID }) {
+            questions.removeAll { $0.id == requestID }   // the row keeps "Has a question": answer it in the app
+            frontCardShownAt = Date()
+            onCardsChanged?()
+            onChanged?()
+            return
+        }
         guard let card = cards.first(where: { $0.id == requestID }) else { return }
         cards.removeAll { $0.id == requestID }
         if let s = session(card.sessionID), !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp) }
@@ -487,6 +586,7 @@ final class ClaudeModel {
 
     /// × on a card: the Done or question is acknowledged; the row keeps its word.
     func dismiss(_ s: ClaudeSession) {
+        releaseQuestion(for: s)
         if s.unseenDone { s.doneSeen = true }
         if s.needsYou != nil, s.needsYou != .permission { s.attentionSeen = true }
         onChanged?()
@@ -503,10 +603,20 @@ final class ClaudeModel {
         onChanged?()
     }
 
+    /// Demo only: a sample question card (nothing is connected, so answering it just removes it).
+    func setDemoQuestion(_ card: QuestionCard?) {
+        questions.removeAll { $0.id == QuestionCard.demoID }
+        if let card { questions.insert(card, at: 0) }
+        frontCardShownAt = Date()
+        onCardsChanged?()
+    }
+
     /// Demo over: the live sessions are back.
     func endDemo() {
         demoSessions = nil
+        questions.removeAll { $0.id == QuestionCard.demoID }
         onChanged?()
+        onCardsChanged?()
     }
 
     // MARK: Quiet and process exit

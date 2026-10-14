@@ -189,6 +189,8 @@ struct ClaudeCard: View {
         ZStack(alignment: .topTrailing) {
             if let card = island.displayedCard {
                 PermissionCardView(card: card, session: session, island: island, actions: actions)
+            } else if let question = island.displayedQuestion {
+                QuestionCardView(card: question, session: session, island: island, actions: actions)
             } else {
                 statusCard
             }
@@ -394,6 +396,108 @@ struct PermissionCardView: View {
         .buttonStyle(PressStyle())
         .disabled(!on)
         .opacity(on ? 1 : 0.35)
+    }
+}
+
+/// Claude's multiple-choice question: tap an option, or type an answer. Several questions come one at a time.
+/// The answers go back down the waiting hook; × or Open hands the question to the app instead.
+struct QuestionCardView: View {
+    let card: QuestionCard
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+    @State private var index = 0
+    @State private var answers: [String: String] = [:]
+    @State private var picked: [String] = []
+    @State private var typed = ""
+
+    var body: some View {
+        let p = island.palette
+        let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
+        let q = card.questions[min(index, card.questions.count - 1)]
+        ZStack(alignment: .leading) {
+            shape.fill(p.tile).overlay(shape.strokeBorder(p.needsYou, lineWidth: 1))
+            HStack(alignment: .top, spacing: 0) {
+                StatusGrid(size: 32, kind: .needsYou, palette: p).padding(.leading, 20).padding(.top, 24)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(q.header.isEmpty ? "Claude has a question" : "Claude asks · \(q.header)")
+                            .font(Theme.font(14, .bold)).foregroundStyle(p.label).lineLimit(1)
+                        if card.questions.count > 1 {
+                            Text("\(index + 1) of \(card.questions.count)").font(Theme.digits(11)).foregroundStyle(p.tertiaryLabel)
+                        }
+                    }
+                    .padding(.trailing, 110)   // room for × and ‹ › in the corner
+                    Text(q.text).font(Theme.font(12.5)).foregroundStyle(p.label).lineLimit(2)
+                        .frame(height: 32, alignment: .topLeading)
+                    ForEach(q.options, id: \.label) { option in optionRow(option, q, p) }
+                    HStack(spacing: 8) {
+                        TextField("Or type an answer…", text: $typed)
+                            .textFieldStyle(.plain)
+                            .font(Theme.font(12.5))
+                            .foregroundStyle(p.label)
+                            .onSubmit { submit(q, typed) }
+                            .padding(.horizontal, 10)
+                            .frame(height: 28)
+                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                        if q.multiSelect || !typed.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button { submit(q, typed.trimmingCharacters(in: .whitespaces).isEmpty ? picked.joined(separator: ", ") : typed) } label: {
+                                Text(q.multiSelect ? "Done" : "Send").font(Theme.font(13, .semibold)).foregroundStyle(p.allowText)
+                                    .frame(width: 70, height: 28).background(Capsule().fill(p.allowBackground))
+                            }
+                            .buttonStyle(PressStyle())
+                            .disabled(picked.isEmpty && typed.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .opacity(picked.isEmpty && typed.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
+                        }
+                    }
+                    Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+                }
+                .padding(.leading, 20).padding(.trailing, 20).padding(.vertical, 18)
+            }
+        }
+        .frame(width: Island.expandedWidth - 46, height: island.cardHeight)
+        .id(card.id)
+    }
+
+    private func optionRow(_ option: ClaudeQuestion.Option, _ q: ClaudeQuestion, _ p: Palette) -> some View {
+        let on = picked.contains(option.label)
+        return Button {
+            if q.multiSelect {
+                if on { picked.removeAll { $0 == option.label } } else { picked.append(option.label) }
+            } else {
+                submit(q, option.label)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                if q.multiSelect {
+                    Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.system(size: 12))
+                        .foregroundStyle(on ? p.accent : p.tertiaryLabel)
+                }
+                Text(option.label).font(Theme.font(12.5, .semibold)).foregroundStyle(p.label).lineLimit(1)
+                if !option.description.isEmpty {
+                    Text(option.description).font(Theme.font(11)).foregroundStyle(p.secondaryLabel).lineLimit(1).truncationMode(.tail)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity)
+            .frame(height: Island.questionOption - 6)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(on ? p.accent : p.rim, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(PressStyle())
+    }
+
+    /// One question answered: on to the next, or send the lot.
+    private func submit(_ q: ClaudeQuestion, _ answer: String) {
+        let text = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        answers[q.text] = text
+        picked = []
+        typed = ""
+        if index + 1 < card.questions.count { index += 1 } else { actions.answerQuestion(card, answers: answers) }
     }
 }
 

@@ -17,6 +17,7 @@ final class IslandActions {
     func dismissCard(_ session: ClaudeSession) { controller?.dismissCard(session) }
     func stepCard(_ delta: Int) { controller?.stepCard(delta) }
     func answer(_ card: PermissionCard, allow: Bool) { controller?.answer(card, allow: allow) }
+    func answerQuestion(_ card: QuestionCard, answers: [String: String]) { controller?.answerQuestion(card, answers: answers) }
     func spotify(_ command: SpotifyCommand) { controller?.spotify(command) }
 }
 

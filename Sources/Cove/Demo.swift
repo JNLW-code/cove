@@ -54,6 +54,12 @@ enum Demo {
     static func questionCard(_ island: Island) {
         guard let a = island.claude.sessions.first else { return }
         a.state = .needsYou(.question)
+        let q = ClaudeQuestion(text: "Which layout for the settings page?", header: "Layout", options: [
+            .init(label: "Tabs", description: "One tab per section, like System Settings"),
+            .init(label: "One page", description: "Everything on one scrolling page"),
+            .init(label: "Sidebar", description: "Sections down the left, content on the right"),
+        ], multiSelect: false)
+        island.claude.setDemoQuestion(QuestionCard(id: QuestionCard.demoID, sessionID: a.id, agentID: nil, inputKey: nil, questions: [q]))
     }
 
     static func clear(_ island: Island) {
@@ -75,6 +81,6 @@ enum Demo {
         { c in c.island.editing = true },
         { c in c.island.editing = false; doneCard(c.island); c.show(.expanded, animation: IslandController.switchAnimation) },
         { c in questionCard(c.island); c.show(.expanded, animation: IslandController.switchAnimation) },
-        { c in c.island.claude.setDemoSessions([]); c.show(.resting, animation: IslandController.closeAnimation) },
+        { c in c.island.claude.setDemoQuestion(nil); c.island.claude.setDemoSessions([]); c.show(.resting, animation: IslandController.closeAnimation) },
     ]
 }

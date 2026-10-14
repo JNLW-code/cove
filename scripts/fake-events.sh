@@ -1,7 +1,8 @@
 #!/bin/bash
 # Drives every Claude state through Cove's socket: three sessions, a 500-line command, a blocked Stop,
 # subagents and an interrupt. Then feeds real PermissionRequest JSON to the hook helper with the app up,
-# with it down (pass "down" after quitting Cove) and on timeout. Usage: scripts/fake-events.sh [up|down|keep]
+# with it down (pass "down" after quitting Cove) and on timeout. Usage: scripts/fake-events.sh [up|down|keep|rows|question]
+# "question" feeds a two-part AskUserQuestion to the helper and prints what the helper answers with.
 set -u
 SOCK="$HOME/Library/Application Support/Cove/cove.sock"
 HELPER="${COVE_HOOK:-$(dirname "$0")/../.build/release/cove-hook}"
@@ -21,6 +22,12 @@ if [ "$MODE" = down ]; then
   exit 0
 fi
 [ -S "$SOCK" ] || { echo "Cove is not running (no socket at $SOCK)"; exit 1; }
+if [ "$MODE" = question ]; then
+  echo "== AskUserQuestion through the real helper (answer it on the island, or notifyutil -p com.jameswebster.cove.test.answerq with COVE_UI_TEST=1)"
+  printf '{"session_id":"%s","cwd":"/Users/jameswebster/Desktop/quoteflow-v3","permission_mode":"default","hook_event_name":"PermissionRequest","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Which layout should the settings page use?","header":"Layout","options":[{"label":"Tabs","description":"One tab per section, like System Settings"},{"label":"One page","description":"Everything on one scrolling page"},{"label":"Sidebar","description":"Sections down the left, content on the right"}],"multiSelect":false},{"question":"Which of these should it remember between launches?","header":"Memory","options":[{"label":"Window size","description":""},{"label":"Last tab","description":""},{"label":"Search text","description":""}],"multiSelect":true}]}}' "$A" \
+    | COVE_HOOK_WAIT=${COVE_HOOK_WAIT:-40} /usr/bin/time -p "$HELPER" PermissionRequest; echo "exit $?"
+  exit 0
+fi
 
 echo "== three sessions start"
 ev SessionStart $A "$QF,\"source\":\"startup\""
