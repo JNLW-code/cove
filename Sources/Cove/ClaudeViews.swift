@@ -70,6 +70,8 @@ struct SessionRow: View {
                 Text("+\(session.agents.count) agent\(session.agents.count == 1 ? "" : "s")")
                     .font(Theme.font(11)).foregroundStyle(p.tertiaryLabel)
             }
+            if let n = session.dirtyFiles, n > 0 { gitBadge("pencil.line", n, p).help("\(n) file\(n == 1 ? "" : "s") not committed") }
+            if let n = session.unpushed, n > 0 { gitBadge("arrow.up", n, p).help("\(n) commit\(n == 1 ? "" : "s") not pushed") }
             Spacer(minLength: 8)
             trailing(p)
             if let stats = statsText {
@@ -92,6 +94,16 @@ struct SessionRow: View {
         }
         .padding(.horizontal, 14)
         .frame(height: Island.rowHeight)
+    }
+
+    /// Small git counts: a pencil with files not committed, an arrow with commits not pushed. Hidden at 0.
+    private func gitBadge(_ symbol: String, _ n: Int, _ p: Palette) -> some View {
+        HStack(spacing: 2) {
+            Image(systemName: symbol).font(.system(size: 10, weight: .medium))
+            Text("\(n)").font(Theme.digits(11))
+        }
+        .foregroundStyle(p.tertiaryLabel)
+        .fixedSize()
     }
 
     /// "64 turns · $87" from the transcript; each part hidden while it is 0.
@@ -312,6 +324,8 @@ struct ClaudeCard: View {
             var parts: [String] = []
             if files > 0 { parts.append("\(files) file\(files == 1 ? "" : "s") changed") }
             if !session.agents.isEmpty { parts.append("\(session.agents.count) agent\(session.agents.count == 1 ? "" : "s") running") }
+            if let n = session.dirtyFiles, n > 0 { parts.append("\(n) not committed") }
+            if let n = session.unpushed, n > 0 { parts.append("\(n) commit\(n == 1 ? "" : "s") to push") }
             return parts.isEmpty ? "Nothing changed" : parts.joined(separator: " · ")
         case .needsYou(.question), .needsYou(.plan): return "Answer it in the app"
         case .needsYou(.askingInApp): return "The island could not take this one"

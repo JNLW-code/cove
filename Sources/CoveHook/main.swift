@@ -71,8 +71,11 @@ default:
     break
 }
 
+let hookStart = Date()
+
 /// project = parent folder of the git common dir (so worktrees and subfolders show the main repo), branch = current branch.
-@MainActor func git(_ args: [String], in cwd: String) -> String? {
+/// Empty output comes back as nil unless `allowEmpty` (a clean `git status` is empty and still an answer).
+@MainActor func git(_ args: [String], in cwd: String, allowEmpty: Bool = false) -> String? {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
     process.arguments = ["-C", cwd] + args
@@ -80,14 +83,14 @@ default:
     process.standardOutput = pipe
     process.standardError = FileHandle.nullDevice
     do { try process.run() } catch { return nil }
-    // The whole hook has 2 s; give git 1 s and move on without project/branch if it is slower.
-    let deadline = Date().addingTimeInterval(1)
+    // The whole hook has 2 s; give each git call 1 s, and all of them together 1.6 s, then move on without the rest.
+    let deadline = min(Date().addingTimeInterval(1), hookStart.addingTimeInterval(1.6))
     while process.isRunning && Date() < deadline { usleep(5000) }
     if process.isRunning { process.terminate(); return nil }
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     guard process.terminationStatus == 0, let out = String(data: data, encoding: .utf8) else { return nil }
     let line = out.trimmingCharacters(in: .whitespacesAndNewlines)
-    return line.isEmpty ? nil : line
+    return line.isEmpty && !allowEmpty ? nil : line
 }
 
 /// Context size: GSD's status-line file when it exists (Terminal sessions), else the last `usage` in the transcript.
@@ -124,10 +127,15 @@ if event == "Stop" || event == "UserPromptSubmit", let context = contextTokens()
     if let percent = context.percent { message["context_percent"] = percent }
 }
 
-if event == "SessionStart" || event == "UserPromptSubmit", let cwd = str("cwd") {
+if event == "SessionStart" || event == "UserPromptSubmit" || event == "Stop", let cwd = str("cwd") {
     if let common = git(["rev-parse", "--path-format=absolute", "--git-common-dir"], in: cwd) {
         message["project"] = URL(fileURLWithPath: common).deletingLastPathComponent().lastPathComponent
         if let branch = git(["rev-parse", "--abbrev-ref", "HEAD"], in: cwd) { message["branch"] = branch }
+        // Files not committed, and commits not pushed (absent when there is no upstream).
+        if let status = git(["status", "--porcelain", "--untracked-files=normal"], in: cwd, allowEmpty: true) {
+            message["dirty"] = status.isEmpty ? 0 : status.split(separator: "\n").count
+        }
+        if let ahead = git(["rev-list", "--count", "@{upstream}..HEAD"], in: cwd).flatMap(Int.init) { message["ahead"] = ahead }
     }
 }
 

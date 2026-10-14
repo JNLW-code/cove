@@ -35,7 +35,7 @@ enum Demo {
         let a = ClaudeSession(id: "demo-a")
         a.project = "quoteflow-v3"; a.branch = "feat/notch"; a.term = "claude-desktop"
         a.turnStart = Date().addingTimeInterval(-252); a.agents = ["x", "y", "z"]; a.state = .working(.editing)
-        a.filesChanged = ["a", "b"]; a.usage = UsageTotals(costUSD: 12.4, turns: 41)
+        a.filesChanged = ["a", "b"]; a.usage = UsageTotals(costUSD: 12.4, turns: 41); a.dirtyFiles = 3; a.unpushed = 2
         let b = ClaudeSession(id: "demo-b")
         b.project = "qf-wt-rec"; b.branch = "rec-fix"; b.term = "Apple_Terminal"
         b.state = .waiting(since: Date().addingTimeInterval(-180)); b.usage = UsageTotals(costUSD: 0.86, turns: 7)

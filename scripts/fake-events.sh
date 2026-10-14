@@ -61,7 +61,7 @@ ev SubagentStop $A "\"agent_id\":\"ag1\""
 ev Stop $A "\"ends_with_question\":false" 2
 ev PreToolUse $A "\"tool_name\":\"Bash\",\"tool_use_id\":\"t8\",\"command\":\"npm run check\",\"input_key\":\"k8\"" 2
 ev PostToolUse $A "\"tool_name\":\"Bash\",\"tool_use_id\":\"t8\",\"input_key\":\"k8\""
-ev Stop $A "\"ends_with_question\":false" 2
+ev Stop $A "\"ends_with_question\":false,\"project\":\"quoteflow-v3\",\"branch\":\"feat/notch\",\"dirty\":3,\"ahead\":2" 2
 if [ "$MODE" = rows ]; then echo "rows only, keeping the sessions"; exit 0; fi
 echo "== A: a 500-line command through the real helper (app up: card until settled by Stop)"
 python3 -c 'import json,sys; cmd="\n".join(f"line {i}: psql \"$DATABASE_URL\" -c \"ALTER TABLE quotes ADD COLUMN IF NOT EXISTS note_{i} text;\"" for i in range(1,501)); print(json.dumps({"session_id":sys.argv[1],"cwd":"/Users/jameswebster/Desktop/quoteflow-v3","permission_mode":"default","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":cmd}}))' "$A" > /tmp/cove-perm.json

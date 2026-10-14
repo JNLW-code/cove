@@ -150,6 +150,9 @@ final class ClaudeSession: Identifiable {
     var replyRequestID: String?
     /// How full the context window is, 0–100, when known.
     var contextPercent: Int?
+    /// Git, from the hook at each prompt and Stop: files not committed, commits not pushed (nil = unknown / no upstream).
+    var dirtyFiles: Int?
+    var unpushed: Int?
     /// Where Claude Code writes this session's transcript; cost and turns are read from it.
     var transcriptPath: String?
     /// What the session has cost so far and how many prompts it has had, from the transcript.
@@ -282,7 +285,11 @@ final class ClaudeModel {
         let s = session(id) ?? add(id)
         s.lastEvent = Date()
         if let cwd = m.string("cwd"), !cwd.isEmpty { s.cwd = cwd }
-        if let project = m.string("project") { s.project = project; s.branch = m.string("branch") }
+        if let project = m.string("project") {
+            s.project = project; s.branch = m.string("branch")
+            s.dirtyFiles = m.int("dirty")
+            s.unpushed = m.int("ahead")
+        }
         if let title = m.string("session_title") { s.title = title }
         if let pid = m.int("pid").map(Int32.init), s.pid != pid { s.pid = pid; watch(s) }
         if let term = m.string("term") { s.term = term }
