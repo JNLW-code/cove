@@ -27,8 +27,14 @@ enum Typist {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         // Electron apps only expose their page to Accessibility once asked to.
         AXUIElementSetAttributeValue(appElement, "AXManualAccessibility" as CFString, kCFBooleanTrue)
-        try? await Task.sleep(for: .milliseconds(300))
-        guard let composer = findComposer(in: appElement) else {
+        var composer: AXUIElement?
+        for _ in 0..<4 {                      // the page tree can take a moment to appear
+            try? await Task.sleep(for: .milliseconds(400))
+            composer = findComposer(in: appElement)
+            if composer != nil { break }
+        }
+        guard let composer else {
+            Log.app.error("Typist: no message box; roles seen: \(roleSummary(in: appElement), privacy: .public)")
             return "Could not find the message box in the Claude app."
         }
         AXUIElementSetAttributeValue(composer, kAXFocusedAttribute as CFString, kCFBooleanTrue)
@@ -69,13 +75,23 @@ enum Typist {
         var best: (AXUIElement, CGFloat)?
         for window in windows.prefix(3) {
             walk(window, depth: 0) { element, role in
-                guard role == "AXTextArea" || role == "AXTextField" || role == "AXComboBox" else { return }
+                guard role == "AXTextArea" || role == "AXTextField" || role == "AXComboBox" || role == "AXWebArea" && false else { return }
                 guard let frame = frame(of: element), frame.width > 100 else { return }
                 if best == nil || frame.minY > best!.1 { best = (element, frame.minY) }
             }
             if best != nil { break }
         }
         return best?.0
+    }
+
+    /// For the log when the box is not found: which roles the app exposes (never any text).
+    private static func roleSummary(in app: AXUIElement) -> String {
+        var counts: [String: Int] = [:]
+        var windowValue: AnyObject?
+        AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &windowValue)
+        guard let window = windowValue else { return "no focused window" }
+        walk(window as! AXUIElement, depth: 0) { _, role in counts[role, default: 0] += 1 }
+        return counts.sorted { $0.value > $1.value }.prefix(14).map { "\($0.key)×\($0.value)" }.joined(separator: " ")
     }
 
     private static func walk(_ element: AXUIElement, depth: Int, visit: (AXUIElement, String) -> Void) {
