@@ -4,9 +4,14 @@ import PackageDescription
 let package = Package(
     name: "Cove",
     platforms: [.macOS("26.0")],
+    dependencies: [
+        // In-app updates (the framework Control Centre-style apps such as iTerm and Transmit use). Pinned to a release.
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.0"),
+    ],
     targets: [
         .executableTarget(
             name: "Cove",
+            dependencies: [.product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/Cove",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

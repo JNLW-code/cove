@@ -39,6 +39,11 @@ Permissions Cove asks for, each only when first needed
 - Full Disk Access (optional, never prompted): the Do Not Disturb peek. See
   Cove's menu > Permissions.
 
+Updates
+-------
+Cove checks for new versions once a day and offers them in place; "Check for
+Updates..." in Cove's menu checks now. Nothing else to download.
+
 Remove
 ------
 Quit Cove, delete it from Applications, delete ~/.claude/island and

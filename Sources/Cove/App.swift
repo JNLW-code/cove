@@ -13,6 +13,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let island = Island()
     private var controller: IslandController?
     private var devCommands: DevCommands?
+    private var updater: Updater?
 
     static func main() {
         let app = NSApplication.shared
@@ -34,6 +35,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = item
         controller.onOpenMenu = { [weak self] in self?.statusItem?.button?.performClick(nil) }
         devCommands = DevCommands { [weak self] command in self?.handle(command) }
+        updater = Updater()
         Log.app.notice("Cove \(Self.version, privacy: .public) launched")
     }
 
@@ -66,6 +68,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.autoenablesItems = false
         menu.addItem(item("Cove \(Self.version)", nil, enabled: false))
+        menu.addItem(item("Check for Updates…", #selector(checkForUpdates), enabled: updater?.canCheck ?? false))
         menu.addItem(.separator())
 
         menu.addItem(submenu("Theme", [("Dark", ThemeMode.dark), ("Light", .light), ("Follow macOS", .system), ("Glass", .glass)].map {
@@ -252,6 +255,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         giveFocusBack(to: previous)
     }
 
+    @objc private func checkForUpdates() { updater?.checkForUpdates() }
+
     @objc private func toggleLaunchpad() { controller?.toggleLaunchpad() }
 
     @objc private func toggleWidget(_ sender: NSMenuItem) {
@@ -332,6 +337,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "launchpad.categories": controller.toggleCategories()
         case "launchpad.folder": controller.openFolder(island.apps.categories.first)
         case "launchpad.demo": island.music = Demo.track; island.weather = Demo.weather   // sample widgets without Spotify or Music
+        case "update.check": updater?.checkForUpdates()
+        case "test.update": updater?.checkInBackground()   // silent check against COVE_FEED, installs and relaunches
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }

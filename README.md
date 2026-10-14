@@ -37,12 +37,16 @@ Then add the entries from [hooks/settings-snippet.json](hooks/settings-snippet.j
 
 Download `Cove.dmg` from the [latest release](https://github.com/JNLW-code/cove/releases/latest) and follow the `Read Me.txt` inside it: drag Cove to Applications, allow it once under System Settings → Privacy & Security ("Open Anyway", because it is signed with a self-signed certificate rather than an Apple Developer ID), double-click `Install Hooks.command` (right-click → Open if macOS refuses it), then paste `Hooks/settings-snippet.json` into the `"hooks"` object of `~/.claude/settings.json`. Needs a MacBook with a notch, Apple silicon, macOS 26 or later and Claude Code 2.1.288 or later.
 
+## Updates
+
+Cove checks the repo's `appcast.xml` once a day and offers new versions in place (Sparkle). "Check for Updates…" in the menu checks now. `make release` signs the DMG with the EdDSA key that `generate_keys` put in the login keychain (back it up with `.build/artifacts/sparkle/Sparkle/bin/generate_keys -x cove-sparkle-key.txt`, kept out of git) and publishes the appcast after the GitHub release. The public half is `SUPublicEDKey` in `Support/Info.plist`; Sparkle also insists the new app carries the same "Cove Dev" signature as the old one. `make test-update` proves the whole path on this Mac without GitHub: it builds a "-test" version, serves it from a local appcast and lets the current build update itself.
+
 ## Release
 
 ```bash
 make dmg        # build/Cove.dmg: the app, an Applications shortcut, Hooks/, Install Hooks.command, Read Me.txt
 make test-dmg   # mounts it, runs the install script against a scratch HOME, checks the files and the helper
-make release    # tags v<version>, pushes main and the tag, publishes a GitHub release with the dmg attached
+make release    # tags v<version>, pushes main and the tag, publishes a GitHub release with the dmg, then commits and pushes appcast.xml
 ```
 
 The version is `CFBundleShortVersionString` in `Support/Info.plist`; `CFBundleVersion` is the commit count. The bundle id (`com.jameswebster.cove`) and the "Cove Dev" certificate never change, so macOS keeps every permission grant across updates: a new version is just the new `Cove.app` dragged over the old one.

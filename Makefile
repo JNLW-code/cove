@@ -5,12 +5,14 @@ IDENTITY   := Cove Dev
 BUILD      := .build/release
 OUT        := build/$(APP).app
 HOOKS      := $(HOME)/.claude/island
-SWIFTFLAGS := -c release -Xswiftc -warnings-as-errors
+SWIFTFLAGS := -c release -Xswiftc -warnings-as-errors -Xlinker -rpath -Xlinker @executable_path/../Frameworks
+SPARKLE    := .build/artifacts/sparkle/Sparkle
+FEED_URL   := https://github.com/JNLW-code/cove/releases/download
 VERSION    := $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
 DMG        := build/Cove.dmg
 STAGE      := build/dmg
 
-.PHONY: check build run install install-hooks uninstall cert quit clean fake dmg test-dmg release
+.PHONY: check build run install install-hooks uninstall cert quit clean fake dmg test-dmg appcast release test-update
 
 ## check: build with warnings as errors (the only build the project does)
 check:
@@ -24,6 +26,9 @@ build: check cert
 	cp Support/Info.plist $(OUT)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$(git rev-list --count HEAD 2>/dev/null || echo 1)" $(OUT)/Contents/Info.plist
 	printf 'APPL????' > $(OUT)/Contents/PkgInfo
+	mkdir -p $(OUT)/Contents/Frameworks
+	cp -R $(SPARKLE)/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework $(OUT)/Contents/Frameworks/
+	codesign --force --deep --sign "$(IDENTITY)" $(OUT)/Contents/Frameworks/Sparkle.framework
 	codesign --force --sign "$(IDENTITY)" --identifier $(BUNDLE) $(OUT)
 	codesign --verify --verbose=1 $(OUT)
 	codesign --force --sign "$(IDENTITY)" --identifier $(BUNDLE).hook $(BUILD)/cove-hook
@@ -71,13 +76,26 @@ dmg: build
 test-dmg: dmg
 	scripts/test-dmg.sh $(DMG)
 
-## release: tag v$(VERSION), push main and the tag, publish a GitHub release with the dmg attached
-release: test-dmg
-	@git diff --quiet && git diff --cached --quiet || (echo "Commit your changes first"; exit 1)
+## appcast: appcast.xml for Sparkle, signed with the EdDSA key in the login keychain, pointing at the GitHub release asset
+appcast: dmg
+	rm -rf build/updates && mkdir -p build/updates && cp $(DMG) build/updates/Cove.dmg
+	$(SPARKLE)/bin/generate_appcast --download-url-prefix "$(FEED_URL)/v$(VERSION)/" \
+	    --link "https://github.com/JNLW-code/cove/releases" -o appcast.xml build/updates
+	@echo "Wrote appcast.xml for $(VERSION)"
+
+## release: tag v$(VERSION), push main and the tag, publish a GitHub release with the dmg attached, then publish the appcast
+release: test-dmg appcast
+	@git diff --quiet -- . ':!appcast.xml' && git diff --cached --quiet || (echo "Commit your changes first"; exit 1)
 	git tag -a v$(VERSION) -m "Cove $(VERSION)"
 	git push origin main v$(VERSION)
 	gh release create v$(VERSION) $(DMG) --title "Cove $(VERSION)" --notes-file release/notes.md
-	@echo "Released Cove $(VERSION)"
+	git add appcast.xml && git commit -q -m "appcast: Cove $(VERSION)" && git push origin main
+	@echo "Released Cove $(VERSION); installed copies see it on their next check"
+
+## test-update: the current build updates itself from a local feed to a "-test" build (no GitHub involved)
+test-update:
+	scripts/test-update.sh
+	$(MAKE) build
 
 ## uninstall: quit, remove the app, its data and the hook files (then take the island lines out of ~/.claude/settings.json)
 uninstall: quit
