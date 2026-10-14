@@ -97,10 +97,13 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(submenu("Allow / Deny Shortcuts", shortcutItems))
 
         let launchpad = item("Open  (\(island.hotKeyLaunchpad))", #selector(toggleLaunchpad), on: island.mode == .launchpad)
+        let widgets = LaunchpadWidget.allCases.map { item($0.title, #selector(toggleWidget(_:)), $0.rawValue, on: !island.hiddenWidgets.contains($0)) }
         menu.addItem(submenu("Launchpad", [
             launchpad,
             item("Change Shortcut…", #selector(recordLaunchpadShortcut)),
             item("Hot Corner (top-left)", #selector(toggleHotCorner), on: Settings.hotCorner),
+            .separator(),
+            submenu("Widgets", widgets),
         ]))
 
         menu.addItem(.separator())
@@ -140,6 +143,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         return [
             line("Spotify (Automation)", Permissions.automation(for: SpotifyModel.bundleID), why: "Needed for play, pause, next and artwork."),
+            line("Apple Music (Automation)", Permissions.automation(for: MusicModel.bundleID), why: "Needed for play, pause, next and artwork in the Launchpad."),
+            line("System Events (Automation)", Permissions.automation(for: "com.apple.systemevents"), why: "Needed for the dark mode toggle in the Launchpad."),
             line("Calendar", Permissions.calendar, why: "Needed to show your next event."),
             line("Accessibility", Typist.isTrusted ? .granted : .notAsked, why: "Needed to type a reply into the Claude app after its hook has moved on."),
             FocusWatcher.access == .granted
@@ -250,6 +255,11 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleLaunchpad() { controller?.toggleLaunchpad() }
 
+    @objc private func toggleWidget(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let widget = LaunchpadWidget(rawValue: raw) else { return }
+        controller?.toggleWidget(widget)
+    }
+
     @objc private func toggleHotCorner() {
         Settings.hotCorner.toggle()
         controller?.setHotCorner(Settings.hotCorner)
@@ -321,6 +331,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "launchpad.type": island.launchpadQuery = "ca"; island.launchpadPage = 0   // as if "ca" had been typed
         case "launchpad.categories": controller.toggleCategories()
         case "launchpad.folder": controller.openFolder(island.apps.categories.first)
+        case "launchpad.demo": island.music = Demo.track; island.weather = Demo.weather   // sample widgets without Spotify or Music
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }

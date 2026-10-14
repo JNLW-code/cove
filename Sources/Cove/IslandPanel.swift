@@ -103,12 +103,17 @@ final class IslandController: NSObject {
         island.spotifyModel.onChange = { [weak self] in
             guard let self, !self.island.demo else { return }
             self.island.spotify = self.island.spotifyModel.track
-            if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
+            self.refitIfOpen()
+        }
+        island.musicModel.onChange = { [weak self] in
+            guard let self, !self.island.demo else { return }
+            self.island.music = self.island.musicModel.track
+            self.refitIfOpen()
         }
         island.weatherModel.onChange = { [weak self] in
             guard let self, !self.island.demo else { return }
             self.island.weather = self.island.weatherModel.now
-            if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
+            self.refitIfOpen()
         }
         island.calendarModel.onChange = { [weak self] in
             guard let self, !self.island.demo else { return }
@@ -117,6 +122,7 @@ final class IslandController: NSObject {
         }
         // The models may already have data from their init (calendar loads at once); copy it now.
         island.spotify = island.spotifyModel.track
+        island.music = island.musicModel.track
         island.weather = island.weatherModel.now
         island.nextEvent = island.calendarModel.next
         island.claude.onPeek = { [weak self] content, seconds in self?.showPeek(content, seconds: seconds) }
@@ -143,6 +149,11 @@ final class IslandController: NSObject {
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(accessibilityChanged), name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(screensChanged), name: NSWorkspace.didWakeNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(screensChanged), name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
+    }
+
+    /// A tile or widget got data while the island is open: the open shape re-measures itself.
+    private func refitIfOpen() {
+        if island.mode == .expanded || island.mode == .launchpad { show(island.mode, animation: Self.switchAnimation) }
     }
 
     // MARK: Modes and frames
@@ -214,6 +225,13 @@ final class IslandController: NSObject {
         island.launchpadFolder = nil
         island.replyingTo = nil; island.notingFor = nil; island.editing = false
         launchpadPrevious = NSWorkspace.shared.frontmostApplication
+        if !island.demo {
+            island.toggles.refresh()
+            island.volume.refresh()
+            island.spotifyModel.islandOpened()
+            island.musicModel.islandOpened()
+            island.weatherModel.islandOpened()
+        }
         haptic()
         show(.launchpad, animation: Self.openAnimation, settle: 0.55)
         setPinned(true)
@@ -549,6 +567,17 @@ final class IslandController: NSObject {
         island.spotifyModel.send(command)
     }
 
+    /// The Now playing widget's buttons go to whichever player is showing.
+    func nowPlaying(_ command: SpotifyCommand) {
+        guard !island.demo else { return }
+        if island.nowPlayingIsSpotify { island.spotifyModel.send(command) } else { island.musicModel.send(command) }
+    }
+
+    func toggleWidget(_ widget: LaunchpadWidget) {
+        island.setWidget(widget, shown: island.hiddenWidgets.contains(widget))
+        if island.mode == .launchpad { show(.launchpad, animation: Self.switchAnimation) }
+    }
+
     private func haptic() {
         NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
     }
@@ -633,6 +662,7 @@ final class IslandController: NSObject {
         pendingPeekSeconds = nil
         island.demo = false
         island.claude.endDemo()
+        island.music = island.musicModel.track
         island.spotify = island.spotifyModel.track
         island.weather = island.weatherModel.now
         island.nextEvent = island.calendarModel.next

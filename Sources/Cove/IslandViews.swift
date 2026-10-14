@@ -28,6 +28,7 @@ final class IslandActions {
     func launchpadStep(_ delta: Int) { controller?.launchpadStep(delta) }
     func toggleCategories() { controller?.toggleCategories() }
     func openFolder(_ category: AppCategory?) { controller?.openFolder(category) }
+    func nowPlaying(_ command: SpotifyCommand) { controller?.nowPlaying(command) }
 }
 
 /// Press feedback on every button: scale 0.97 in 120 ms.

@@ -15,6 +15,27 @@ enum TileKind: String, CaseIterable, Sendable {
     }
 }
 
+/// The Launchpad's widget row, each one switchable in the menu.
+enum LaunchpadWidget: String, CaseIterable, Sendable {
+    case nowPlaying, weather, toggles
+
+    var title: String {
+        switch self {
+        case .nowPlaying: "Now playing"
+        case .weather: "Weather"
+        case .toggles: "Quick toggles"
+        }
+    }
+
+    var width: CGFloat {
+        switch self {
+        case .nowPlaying: 262
+        case .weather: 172
+        case .toggles: 196
+        }
+    }
+}
+
 struct SpotifyTrack: Equatable {
     var title: String
     var artist: String
@@ -113,6 +134,10 @@ final class Island {
     let weatherModel = WeatherModel()
     let calendarModel = CalendarModel()
     let apps = AppCatalog()
+    let musicModel = MusicModel()
+    let toggles = QuickToggles()
+    var music: SpotifyTrack?
+    private(set) var hiddenWidgets: Set<LaunchpadWidget>
     /// What is typed in the Launchpad's search field, and which page of the grid is showing.
     var launchpadQuery = ""
     var launchpadPage = 0
@@ -139,6 +164,12 @@ final class Island {
         let saved = (defaults.stringArray(forKey: "tileOrder") ?? []).compactMap(TileKind.init(rawValue:))
         order = saved.count == TileKind.allCases.count ? saved : TileKind.allCases
         hidden = Set((defaults.stringArray(forKey: "hiddenTiles") ?? []).compactMap(TileKind.init(rawValue:)))
+        hiddenWidgets = Set((defaults.stringArray(forKey: "launchpadHiddenWidgets") ?? []).compactMap(LaunchpadWidget.init(rawValue:)))
+    }
+
+    func setWidget(_ widget: LaunchpadWidget, shown: Bool) {
+        if shown { hiddenWidgets.remove(widget) } else { hiddenWidgets.insert(widget) }
+        UserDefaults.standard.set(hiddenWidgets.map(\.rawValue).sorted(), forKey: "launchpadHiddenWidgets")
     }
 
     func setTheme(_ mode: ThemeMode) {
@@ -278,11 +309,40 @@ final class Island {
     static let launchpadCell: CGFloat = 84
     static let launchpadSearchHeight: CGFloat = 32
     static let launchpadRadius: CGFloat = 44
+    static let widgetHeight: CGFloat = 96
+    static let widgetGap: CGFloat = 12
+
+    /// Spotify first, else Apple Music.
+    var nowPlaying: SpotifyTrack? { spotify ?? music }
+    var nowPlayingIsSpotify: Bool { spotify != nil }
+
+    /// Widgets in the row: not hidden, and with something to show.
+    var visibleWidgets: [LaunchpadWidget] {
+        LaunchpadWidget.allCases.filter { widget in
+            guard !hiddenWidgets.contains(widget) else { return false }
+            switch widget {
+            case .nowPlaying: return nowPlaying != nil
+            case .weather: return weather != nil
+            case .toggles: return true
+            }
+        }
+    }
+
+    /// The row never gets cut at the sides: it scales down when the widgets are wider than the card.
+    var widgetScale: CGFloat {
+        let widgets = visibleWidgets
+        guard !widgets.isEmpty else { return 1 }
+        let total = widgets.map(\.width).reduce(0, +) + CGFloat(widgets.count - 1) * Self.widgetGap
+        return min(1, (launchpadWidth - 2 * Self.launchpadInset) / total)
+    }
+
+    var widgetRowHeight: CGFloat { visibleWidgets.isEmpty ? 0 : (Self.widgetHeight * widgetScale).rounded() + 18 }
 
     var launchpadWidth: CGFloat { min(Self.launchpadMaxWidth, (screenWidth * 0.85).rounded()) }
-    /// Notch band, 12 gap, search, 22 gap, four rows, dots, bottom inset.
+    /// Notch band, 12 gap, search, 22 gap, the widget row (if any), four rows, dots, bottom inset.
     var launchpadHeight: CGFloat {
-        notchSize.height + 12 + Self.launchpadSearchHeight + 22 + CGFloat(Self.launchpadRows) * Self.launchpadCell + 10 + 16 + 18
+        notchSize.height + 12 + Self.launchpadSearchHeight + 22 + widgetRowHeight
+            + CGFloat(Self.launchpadRows) * Self.launchpadCell + 10 + 16 + 18
     }
 
     /// Folders show when "By category" is on, nothing is typed and no folder is open.

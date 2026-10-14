@@ -19,6 +19,10 @@ struct LaunchpadView: View {
             VStack(spacing: 0) {
                 topRow
                 Spacer().frame(height: 22)
+                if !island.visibleWidgets.isEmpty {
+                    LaunchpadWidgets(island: island, actions: actions)
+                    Spacer().frame(height: 18)
+                }
                 LaunchpadGrid(island: island, actions: actions, cellWidth: cellWidth)
                 Spacer().frame(height: 10)
                 pager
@@ -255,5 +259,172 @@ struct LaunchpadCell: View {
         }
         .buttonStyle(PressStyle())
         .help(app.name)
+    }
+}
+
+// MARK: - Widgets
+
+/// One row of widgets, centred, scaled down as one piece when they would not fit.
+struct LaunchpadWidgets: View {
+    var island: Island
+    let actions: IslandActions
+
+    var body: some View {
+        let p = island.palette
+        let scale = island.widgetScale
+        HStack(spacing: Island.widgetGap) {
+            ForEach(island.visibleWidgets, id: \.self) { widget in
+                ZStack(alignment: .topLeading) {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous).fill(p.matteTile)
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                    content(widget)
+                }
+                .frame(width: widget.width, height: Island.widgetHeight)
+            }
+        }
+        .scaleEffect(scale, anchor: .top)
+        .frame(height: (Island.widgetHeight * scale).rounded())
+    }
+
+    @ViewBuilder private func content(_ widget: LaunchpadWidget) -> some View {
+        switch widget {
+        case .nowPlaying:
+            if let track = island.nowPlaying {
+                NowPlayingWidget(track: track, palette: island.palette, actions: actions, live: !island.demo && !island.reduceMotion,
+                                 progress: { [island] in island.nowPlayingIsSpotify ? island.spotifyModel.progress : island.musicModel.progress })
+            }
+        case .weather:
+            if let weather = island.weather { WeatherWidget(weather: weather, palette: island.palette) }
+        case .toggles:
+            TogglesWidget(island: island)
+        }
+    }
+}
+
+struct NowPlayingWidget: View {
+    let track: SpotifyTrack
+    let palette: Palette
+    let actions: IslandActions
+    var live = false
+    var progress: () -> Double = { 0 }
+
+    private func bar(_ value: Double) -> some View {
+        ZStack(alignment: .leading) {
+            Capsule().fill(palette.matteSecondary.opacity(0.3))
+            Capsule().fill(palette.matteSecondary).frame(width: max(0, min(1, value)) * 132)
+        }
+        .frame(width: 132, height: 3)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let art = track.artwork {
+                    Image(nsImage: art).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    ZStack {
+                        palette.matteSecondary.opacity(0.25)
+                        Image(systemName: "music.note").font(.system(size: 24)).foregroundStyle(palette.matteSecondary)
+                    }
+                }
+            }
+            .frame(width: 92, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.title).font(Theme.font(13.5, .semibold)).foregroundStyle(palette.matteLabel).lineLimit(1)
+                Text(track.artist).font(Theme.font(12)).foregroundStyle(palette.matteSecondary).lineLimit(1)
+                Group {
+                    if track.playing && live {
+                        TimelineView(.periodic(from: .now, by: 1)) { _ in bar(progress()) }
+                    } else {
+                        bar(track.progress)
+                    }
+                }
+                .padding(.top, 8)
+                HStack(spacing: 22) {
+                    control("backward.fill", .previous)
+                    control(track.playing ? "pause.fill" : "play.fill", .playPause)
+                    control("forward.fill", .next)
+                }
+                .frame(width: 132)
+                .padding(.top, 6)
+            }
+            .frame(width: 132, alignment: .leading)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: Island.widgetHeight)
+    }
+
+    private func control(_ symbol: String, _ command: SpotifyCommand) -> some View {
+        Button { actions.nowPlaying(command) } label: {
+            Image(systemName: symbol).font(.system(size: 12, weight: .bold)).foregroundStyle(palette.matteLabel)
+                .frame(width: 18, height: 16)
+        }
+        .buttonStyle(PressStyle())
+    }
+}
+
+struct WeatherWidget: View {
+    let weather: WeatherNow
+    let palette: Palette
+
+    var body: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(weather.temperature)°").font(Theme.digits(30, .medium)).foregroundStyle(palette.matteLabel)
+                Text(weather.city).font(Theme.font(12.5)).foregroundStyle(palette.matteSecondary).lineLimit(1).padding(.top, 4)
+                Text("H \(weather.high)°  L \(weather.low)°").font(Theme.digits(11)).foregroundStyle(palette.matteSecondary).padding(.top, 6)
+            }
+            Spacer(minLength: 4)
+            Image(systemName: weather.symbol).symbolRenderingMode(.multicolor).font(.system(size: 30))
+                .frame(width: 40, height: 40)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+    }
+}
+
+/// Wi-Fi, dark mode and mute as buttons, the volume as a slider underneath.
+struct TogglesWidget: View {
+    var island: Island
+
+    var body: some View {
+        let p = island.palette
+        let t = island.toggles
+        let v = island.volume
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                toggle("wifi", on: t.wifiOn, enabled: t.wifiAvailable, help: "Wi-Fi") { t.toggleWifi() }
+                toggle("circle.lefthalf.filled", on: t.darkMode, enabled: true, help: "Dark mode") { t.toggleDarkMode() }
+                toggle(v.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", on: !v.muted, enabled: v.available, help: "Mute") { v.toggleMute() }
+            }
+            HStack(spacing: 8) {
+                Image(systemName: "speaker.wave.1").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.matteSecondary)
+                Slider(value: Binding(get: { Double(v.level) }, set: { v.setLevel(Float($0)) }), in: 0...1)
+                    .controlSize(.mini)
+                    .tint(p.matteAccent)
+                    .disabled(!v.hasLevel)
+                Image(systemName: "speaker.wave.3").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.matteSecondary)
+            }
+            .frame(height: 20)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 12)
+    }
+
+    private func toggle(_ symbol: String, on: Bool, enabled: Bool, help: String, action: @escaping () -> Void) -> some View {
+        let p = island.palette
+        return Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(on ? (p.isDark ? Color.black : .white) : p.matteSecondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? p.matteAccent : p.matteSecondary.opacity(0.18)))
+        }
+        .buttonStyle(PressStyle())
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
+        .help(help)
     }
 }
