@@ -80,3 +80,99 @@ enum Settings {
         set { UserDefaults.standard.set(newValue, forKey: "peekSound") }
     }
 }
+
+/// Do Not Disturb and other Focus modes, read from macOS's own Focus database. There is no public API for this
+/// without a paid team (INFocusStatusCenter needs an entitlement), so Cove watches the folder, which needs Full Disk Access.
+/// Event-driven: a file-system watch, no polling. Without the permission the watcher simply stays off.
+@MainActor
+final class FocusWatcher {
+    private static let realDB = NSHomeDirectory() + "/Library/DoNotDisturb/DB"
+    /// Test builds (COVE_UI_TEST=1) may point at a scratch folder holding fake files.
+    static var db: String {
+        let env = ProcessInfo.processInfo.environment
+        if env["COVE_UI_TEST"] == "1", let dir = env["COVE_FOCUS_DB"], !dir.isEmpty { return dir }
+        return realDB
+    }
+    private static let fallbackNames = [
+        "com.apple.donotdisturb.mode.default": "Do Not Disturb", "com.apple.sleep.sleep-mode": "Sleep",
+        "com.apple.focus.work": "Work", "com.apple.focus.personal": "Personal", "com.apple.focus.driving": "Driving",
+        "com.apple.focus.fitness": "Fitness", "com.apple.focus.gaming": "Gaming", "com.apple.focus.mindfulness": "Mindfulness",
+        "com.apple.focus.reading": "Reading",
+    ]
+
+    /// Full Disk Access as seen from here: can the Assertions file be opened?
+    static var access: Permissions.State {
+        let fd = open(db + "/Assertions.json", O_RDONLY)
+        if fd >= 0 { close(fd); return .granted }
+        return errno == ENOENT ? .unavailable : .denied
+    }
+
+    private let emit: (PeekContent, String) -> Void
+    private var source: DispatchSourceFileSystemObject?
+    private var settle: Task<Void, Never>?
+    private var hasRead = false
+    private var lastMode: String?
+    private(set) var running = false
+
+    init(emit: @escaping (PeekContent, String) -> Void) { self.emit = emit }
+
+    /// Starts watching if Full Disk Access allows it. Safe to call again, e.g. after James grants it in System Settings.
+    func startIfPossible() {
+        guard !running else { return }
+        guard Self.access == .granted else {
+            if !hasRead { Log.app.notice("Focus watch off: no Full Disk Access"); hasRead = true }
+            return
+        }
+        let fd = open(Self.db, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let s = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: [.write, .rename, .delete, .attrib], queue: .main)
+        s.setEventHandler { [weak self] in MainActor.assumeIsolated { self?.changed() } }
+        s.setCancelHandler { close(fd) }
+        s.resume()
+        source = s
+        running = true
+        lastMode = Self.activeMode()
+        hasRead = true
+        Log.app.notice("Focus watch on")
+    }
+
+    /// macOS rewrites the files in a burst; read once they settle.
+    private func changed() {
+        settle?.cancel()
+        settle = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard let self, !Task.isCancelled else { return }
+            let now = Self.activeMode()
+            let before = self.lastMode
+            guard before != now else { return }
+            self.lastMode = now
+            if let now {
+                self.emit(PeekContent(symbol: "moon.fill", icon: nil, tint: .focus, word: Self.name(of: now), second: nil), "focus.on")
+            } else if let before {
+                self.emit(PeekContent(symbol: "moon", icon: nil, tint: .focus, word: "\(Self.name(of: before)) off", second: nil), "focus.off")
+            }
+        }
+    }
+
+    /// The mode identifier of the first active assertion, or nil when no Focus is on.
+    private static func activeMode() -> String? {
+        guard let data = FileManager.default.contents(atPath: db + "/Assertions.json"),
+              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let records = (json["data"] as? [[String: Any]])?.first?["storeAssertionRecords"] as? [[String: Any]] else { return nil }
+        for record in records {
+            if let details = record["assertionDetails"] as? [String: Any],
+               let mode = details["assertionDetailsModeIdentifier"] as? String, !mode.isEmpty { return mode }
+        }
+        return nil
+    }
+
+    /// The mode's name as James named it in System Settings, else a sensible default.
+    private static func name(of mode: String) -> String {
+        if let data = FileManager.default.contents(atPath: db + "/ModeConfigurations.json"),
+           let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+           let configs = (json["data"] as? [[String: Any]])?.first?["modeConfigurations"] as? [String: Any],
+           let entry = configs[mode] as? [String: Any], let m = entry["mode"] as? [String: Any],
+           let n = m["name"] as? String, !n.isEmpty { return n }
+        return fallbackNames[mode] ?? "Focus"
+    }
+}

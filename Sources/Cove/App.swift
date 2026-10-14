@@ -62,6 +62,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        controller?.startFocusIfPossible()
         menu.removeAllItems()
         menu.autoenablesItems = false
         menu.addItem(item("Cove \(Self.version)", nil, enabled: false))
@@ -134,6 +135,9 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             line("Spotify (Automation)", Permissions.automation(for: SpotifyModel.bundleID), why: "Needed for play, pause, next and artwork."),
             line("Calendar", Permissions.calendar, why: "Needed to show your next event."),
             line("Accessibility", Typist.isTrusted ? .granted : .notAsked, why: "Needed to type a reply into the Claude app after its hook has moved on."),
+            FocusWatcher.access == .granted
+                ? line("Full Disk Access (Do Not Disturb peek)", .granted, why: "")
+                : item("Full Disk Access: not granted. Only for the Do Not Disturb peek — click to open System Settings", #selector(openFullDiskAccess)),
             item("Launch at Login: \(LaunchAtLogin.statusText)", nil, enabled: false),
         ]
     }
@@ -235,6 +239,11 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         giveFocusBack(to: previous)
+    }
+
+    /// System Settings → Privacy & Security → Full Disk Access. macOS has no prompt for this one; James adds Cove there.
+    @objc private func openFullDiskAccess() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") { NSWorkspace.shared.open(url) }
     }
 
     @objc private func toggleLogin() {

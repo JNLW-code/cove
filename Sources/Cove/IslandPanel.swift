@@ -53,6 +53,7 @@ final class IslandController: NSObject {
     var onOpenMenu: (() -> Void)?
     private var hotKeys: HotKeys?
     private var peekSources: PeekSources?
+    private var focusWatcher: FocusWatcher?
     private var peekQueue: [(PeekContent, Double)] = []
     private var recentPeekKeys: [String: Date] = [:]
 
@@ -113,6 +114,8 @@ final class IslandController: NSObject {
         island.nextEvent = island.calendarModel.next
         island.claude.onPeek = { [weak self] content, seconds in self?.showPeek(content, seconds: seconds) }
         peekSources = PeekSources { [weak self] content, key in self?.showPeek(content, seconds: 3, key: key) }
+        focusWatcher = FocusWatcher { [weak self] content, key in self?.showPeek(content, seconds: 3, key: key) }
+        focusWatcher?.startIfPossible()
         island.claude.onChanged = { [weak self] in self?.claudeChanged() }
         island.claude.onCardsChanged = { [weak self] in self?.cardsChanged() }
         hotKeys = HotKeys(onAllow: { [weak self] in self?.answerFront(allow: true) },
@@ -171,6 +174,9 @@ final class IslandController: NSObject {
             else if island.mode == .expanded { setPinned(false); show(.expanded, animation: Self.switchAnimation) }
         }
     }
+
+    /// The menu opened: if Full Disk Access was granted since launch, the Focus watch can start now.
+    func startFocusIfPossible() { focusWatcher?.startIfPossible() }
 
     /// Shortcuts changed in the menu: update the labels and re-register if a card is showing.
     func shortcutsChanged() {
