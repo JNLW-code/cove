@@ -555,8 +555,13 @@ final class IslandController: NSObject {
         }
     }
 
+    /// The ◐ button cycles Dark → Light → Glass.
     func toggleTheme() {
-        island.setTheme(island.palette.isDark ? .light : .dark)
+        switch island.themeMode {
+        case .dark: island.setTheme(.light)
+        case .light, .system: island.setTheme(.glass)
+        case .glass: island.setTheme(.dark)
+        }
     }
 
     func openMenu() {

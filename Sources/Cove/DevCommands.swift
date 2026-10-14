@@ -5,7 +5,7 @@ import notify
 /// Nothing here approves anything; it only changes what the island shows.
 @MainActor
 final class DevCommands {
-    static let names = ["theme.dark", "theme.light", "theme.system", "demo.toggle", "demo.next",
+    static let names = ["theme.dark", "theme.light", "theme.system", "theme.glass", "demo.toggle", "demo.next",
                         "show.resting", "show.compact", "show.peek", "show.expanded", "open", "close", "edit.toggle", "pin.toggle", "menu.open", "calendar.request",
                         "launchpad.toggle", "launchpad.next", "launchpad.type", "launchpad.categories", "launchpad.folder", "launchpad.demo"]
     private var tokens: [Int32] = []

@@ -68,7 +68,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Cove \(Self.version)", nil, enabled: false))
         menu.addItem(.separator())
 
-        menu.addItem(submenu("Theme", [("Dark", ThemeMode.dark), ("Light", .light), ("Follow macOS", .system)].map {
+        menu.addItem(submenu("Theme", [("Dark", ThemeMode.dark), ("Light", .light), ("Follow macOS", .system), ("Glass", .glass)].map {
             item($0.0, #selector(pickTheme(_:)), $0.1.rawValue, on: island.themeMode == $0.1)
         }))
 
@@ -313,6 +313,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "theme.dark": island.setTheme(.dark)
         case "theme.light": island.setTheme(.light)
         case "theme.system": island.setTheme(.system)
+        case "theme.glass": island.setTheme(.glass)
         case "demo.toggle": controller.toggleDemo()
         case "demo.next": controller.nextDemoStep()
         // show.* put the island in a held demo state (sample data, hover off); show.resting ends it.

@@ -158,6 +158,21 @@ struct BlackShape: Shape {
     }
 }
 
+/// The big surface behind the island or the Launchpad: a flat fill, or Liquid Glass in the Glass theme.
+struct Surface<S: InsettableShape>: View {
+    let shape: S
+    let color: Color
+    let palette: Palette
+
+    var body: some View {
+        if palette.isGlass {
+            Color.clear.glassEffect(.regular, in: shape)
+        } else {
+            shape.fill(color).overlay(shape.strokeBorder(palette.rim, lineWidth: 1))
+        }
+    }
+}
+
 /// Root of the panel. Always draws the black notch shape; the grey island appears for `expanded`.
 struct IslandRoot: View {
     var island: Island
@@ -337,8 +352,7 @@ struct ExpandedIsland: View {
         let p = island.palette
         let shape = RoundedRectangle(cornerRadius: 35, style: .continuous)
         ZStack(alignment: .top) {
-            shape.fill(p.island)
-                .overlay(shape.strokeBorder(p.rim, lineWidth: 1))
+            Surface(shape: shape, color: p.island, palette: p)
                 .contentShape(shape)
                 .onTapGesture { actions.togglePin() }
             ToolbarRow(island: island, actions: actions)

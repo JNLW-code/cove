@@ -12,8 +12,7 @@ struct LaunchpadView: View {
         let p = island.palette
         let shape = RoundedRectangle(cornerRadius: Island.launchpadRadius, style: .continuous)
         ZStack(alignment: .top) {
-            shape.fill(p.matteBackground)
-                .overlay(shape.strokeBorder(p.rim, lineWidth: 1))
+            Surface(shape: shape, color: p.matteBackground, palette: p)
                 .contentShape(shape)
                 .onTapGesture { actions.closeLaunchpad() }
             VStack(spacing: 0) {

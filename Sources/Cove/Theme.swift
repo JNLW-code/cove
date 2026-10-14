@@ -1,9 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// Which look the island uses. `system` follows the macOS appearance.
+/// Which look the island uses. `system` follows the macOS appearance; `glass` is Apple's Liquid Glass material
+/// (translucent, follows the macOS appearance), like Control Centre.
 enum ThemeMode: String, CaseIterable, Sendable {
-    case dark, light, system
+    case dark, light, system, glass
 }
 
 /// Status tints. Working = accent, needs you = orange, done = green, blocked = red, focus = indigo (Do Not Disturb).
@@ -14,6 +15,8 @@ enum Tint: Sendable {
 /// Every colour the island draws, resolved for one theme. Colour set "B Lifted" from the mockup.
 struct Palette {
     let isDark: Bool
+    /// Surfaces are glass; the fills below are translucent so the desktop shows through.
+    let isGlass: Bool
     let island, tile, rim, deny, allowBackground, allowText: Color
     let label, secondaryLabel, tertiaryLabel, quaternaryLabel: Color
     let accent, needsYou, done, blocked, focus: Color
@@ -41,7 +44,7 @@ enum Theme {
         switch mode {
         case .dark: NSAppearance(named: .darkAqua) ?? NSApp.effectiveAppearance
         case .light: NSAppearance(named: .aqua) ?? NSApp.effectiveAppearance
-        case .system: NSApp.effectiveAppearance
+        case .system, .glass: NSApp.effectiveAppearance
         }
     }
 
@@ -52,10 +55,15 @@ enum Theme {
         let opposite = NSAppearance(named: isDark ? .aqua : .darkAqua) ?? app
         func c(_ color: NSColor, _ a: NSAppearance = app) -> Color { Color(nsColor: resolve(color, in: a)) }
         let islandColor = resolve(isDark ? .underPageBackgroundColor : .windowBackgroundColor, in: app)
+        let glass = mode == .glass
+        // On glass every fill is a translucent wash of the label colour, as in Control Centre.
+        let wash = c(.labelColor).opacity(isDark ? 0.10 : 0.07)
+        let innerWash = c(.labelColor).opacity(isDark ? 0.06 : 0.04)
         return Palette(
             isDark: isDark,
-            island: Color(nsColor: islandColor),
-            tile: Color(nsColor: blend(resolve(.secondarySystemFill, in: app), over: islandColor)),
+            isGlass: glass,
+            island: glass ? innerWash : Color(nsColor: islandColor),
+            tile: glass ? wash : Color(nsColor: blend(resolve(.secondarySystemFill, in: app), over: islandColor)),
             rim: c(.separatorColor),
             deny: c(.unemphasizedSelectedContentBackgroundColor),
             allowBackground: c(.windowBackgroundColor, opposite),
@@ -66,9 +74,11 @@ enum Theme {
             blocked: c(.systemRed), focus: c(.systemIndigo),
             onBlackLabel: c(.labelColor, dark), onBlackSecondary: c(.secondaryLabelColor, dark),
             onBlackTertiary: c(.tertiaryLabelColor, dark), onBlackQuaternary: c(.quaternaryLabelColor, dark),
-            matteBackground: hex(isDark ? 0x16181F : 0xF7F8FA), matteTile: hex(isDark ? 0x21242D : 0xFBFBFC),
-            matteLabel: hex(isDark ? 0xE3E7EF : 0x1E2129), matteSecondary: hex(isDark ? 0xA4ABBA : 0x545A69),
-            matteAccent: hex(isDark ? 0x8FC7FF : 0x3B82D0)
+            matteBackground: glass ? .clear : hex(isDark ? 0x16181F : 0xF7F8FA),
+            matteTile: glass ? wash : hex(isDark ? 0x21242D : 0xFBFBFC),
+            matteLabel: glass ? c(.labelColor) : hex(isDark ? 0xE3E7EF : 0x1E2129),
+            matteSecondary: glass ? c(.secondaryLabelColor) : hex(isDark ? 0xA4ABBA : 0x545A69),
+            matteAccent: glass ? c(.controlAccentColor) : hex(isDark ? 0x8FC7FF : 0x3B82D0)
         )
     }
 
