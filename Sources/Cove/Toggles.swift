@@ -34,6 +34,27 @@ final class QuickToggles {
         }
     }
 
+    /// Opens Finder's AirDrop window (the AirDrop app that lives inside Finder; no permission needed).
+    func openAirDrop() {
+        let url = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app/Contents/Applications/AirDrop.app")
+        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+    }
+
+    /// Keyboard backlight up or down. There is no public API for the level, so this presses the keyboard's own
+    /// illumination keys (a system-defined event), which needs the Accessibility permission Cove already uses for replies.
+    func keyboardBrightness(up: Bool) {
+        guard Typist.isTrusted else { Log.app.error("Keyboard brightness needs Accessibility"); return }
+        let key = up ? 0x15 : 0x16   // NX_KEYTYPE_ILLUMINATION_UP / DOWN
+        for down in [true, false] {
+            let state = down ? 0xA : 0xB
+            let flags = NSEvent.ModifierFlags(rawValue: UInt(state << 8))
+            let data1 = (key << 16) | (state << 8)
+            guard let event = NSEvent.otherEvent(with: .systemDefined, location: .zero, modifierFlags: flags, timestamp: 0,
+                                                 windowNumber: 0, context: nil, subtype: 8, data1: data1, data2: -1) else { return }
+            event.cgEvent?.post(tap: .cghidEventTap)
+        }
+    }
+
     /// Flips macOS between light and dark. System Events does the switch, so macOS asks once to let Cove control it.
     func toggleDarkMode() {
         var error: NSDictionary?

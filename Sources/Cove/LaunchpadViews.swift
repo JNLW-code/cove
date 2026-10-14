@@ -384,7 +384,7 @@ struct WeatherWidget: View {
     }
 }
 
-/// Wi-Fi, dark mode and mute as buttons, the volume as a slider underneath.
+/// Wi-Fi, AirDrop, keyboard brightness down / up, dark mode and mute as buttons, the volume as a slider underneath.
 struct TogglesWidget: View {
     var island: Island
 
@@ -395,6 +395,9 @@ struct TogglesWidget: View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
                 toggle("wifi", on: t.wifiOn, enabled: t.wifiAvailable, help: "Wi-Fi") { t.toggleWifi() }
+                toggle("square.and.arrow.up.circle", on: false, enabled: true, help: "AirDrop window") { t.openAirDrop() }
+                toggle("light.min", on: false, enabled: Typist.isTrusted, help: Typist.isTrusted ? "Keyboard backlight down" : "Keyboard backlight needs Accessibility (Permissions menu)") { t.keyboardBrightness(up: false) }
+                toggle("light.max", on: false, enabled: Typist.isTrusted, help: Typist.isTrusted ? "Keyboard backlight up" : "Keyboard backlight needs Accessibility (Permissions menu)") { t.keyboardBrightness(up: true) }
                 toggle("circle.lefthalf.filled", on: t.darkMode, enabled: true, help: "Dark mode") { t.toggleDarkMode() }
                 toggle(v.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", on: !v.muted, enabled: v.available, help: "Mute") { v.toggleMute() }
             }
