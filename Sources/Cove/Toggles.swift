@@ -34,12 +34,6 @@ final class QuickToggles {
         }
     }
 
-    /// Opens Finder's AirDrop window (the AirDrop app that lives inside Finder; no permission needed).
-    func openAirDrop() {
-        let url = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app/Contents/Applications/AirDrop.app")
-        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
-    }
-
     /// Keyboard backlight up or down. There is no public API for the level, so this presses the keyboard's own
     /// illumination keys (a system-defined event), which needs the Accessibility permission Cove already uses for replies.
     func keyboardBrightness(up: Bool) {
