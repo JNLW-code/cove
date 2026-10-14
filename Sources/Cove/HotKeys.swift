@@ -1,8 +1,8 @@
 import AppKit
 import Carbon
 
-/// Global shortcuts for Allow and Deny, registered only while a card is showing. Carbon hot keys need no
-/// Accessibility permission. Defaults ⌃⌥Y / ⌃⌥N; stored in UserDefaults as key code + modifiers.
+/// Global shortcuts: Allow and Deny (registered only while a card is showing) and the Launchpad key (always on).
+/// Carbon hot keys need no Accessibility permission. Defaults ⌃⌥Y / ⌃⌥N / ⌘4; stored in UserDefaults as key code + modifiers.
 @MainActor
 final class HotKeys {
     struct Combo: Equatable, Sendable {
@@ -32,16 +32,20 @@ final class HotKeys {
     static let ctrlShift = UInt32(controlKey | shiftKey)
     static let defaultAllow = Combo(keyCode: UInt32(kVK_ANSI_Y), modifiers: UInt32(controlKey | optionKey))
     static let defaultDeny = Combo(keyCode: UInt32(kVK_ANSI_N), modifiers: UInt32(controlKey | optionKey))
+    static let defaultLaunchpad = Combo(keyCode: UInt32(kVK_ANSI_4), modifiers: UInt32(cmdKey))
 
     nonisolated(unsafe) private static weak var shared: HotKeys?
     private var handler: EventHandlerRef?
     private var refs: [EventHotKeyRef] = []
+    private var launchpadRef: EventHotKeyRef?
     private let onAllow: () -> Void
     private let onDeny: () -> Void
+    private let onLaunchpad: () -> Void
 
-    init(onAllow: @escaping () -> Void, onDeny: @escaping () -> Void) {
+    init(onAllow: @escaping () -> Void, onDeny: @escaping () -> Void, onLaunchpad: @escaping () -> Void) {
         self.onAllow = onAllow
         self.onDeny = onDeny
+        self.onLaunchpad = onLaunchpad
         Self.shared = self
     }
 
@@ -57,21 +61,12 @@ final class HotKeys {
 
     var allow: Combo { Self.load("allowKey", default: Self.defaultAllow) }
     var deny: Combo { Self.load("denyKey", default: Self.defaultDeny) }
+    var launchpad: Combo { Self.load("launchpadKey", default: Self.defaultLaunchpad) }
 
     /// Registers both shortcuts. Safe to call again; it re-registers.
     func register() {
         unregister()
-        if handler == nil {
-            var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-            InstallEventHandler(GetApplicationEventTarget(), { _, event, _ -> OSStatus in
-                var id = EventHotKeyID()
-                GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
-                                  MemoryLayout<EventHotKeyID>.size, nil, &id)
-                let which = id.id
-                Task { @MainActor in HotKeys.shared?.fired(which) }
-                return noErr
-            }, 1, &spec, nil, &handler)
-        }
+        installHandler()
         for (index, combo) in [allow, deny].enumerated() {
             var ref: EventHotKeyRef?
             let id = EventHotKeyID(signature: OSType(0x434F_5645), id: UInt32(index + 1)) // "COVE"
@@ -83,13 +78,45 @@ final class HotKeys {
         }
     }
 
+    /// The Launchpad key stays registered for the life of the app; call again after it changes.
+    func registerLaunchpad() {
+        if let launchpadRef { UnregisterEventHotKey(launchpadRef); self.launchpadRef = nil }
+        installHandler()
+        let id = EventHotKeyID(signature: OSType(0x434F_5645), id: 3)
+        var ref: EventHotKeyRef?
+        if RegisterEventHotKey(launchpad.keyCode, launchpad.modifiers, id, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
+            launchpadRef = ref
+        } else {
+            Log.app.error("Could not register the Launchpad shortcut \(self.launchpad.display, privacy: .public)")
+        }
+    }
+
+    private func installHandler() {
+        if handler == nil {
+            var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+            InstallEventHandler(GetApplicationEventTarget(), { _, event, _ -> OSStatus in
+                var id = EventHotKeyID()
+                GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
+                                  MemoryLayout<EventHotKeyID>.size, nil, &id)
+                let which = id.id
+                Task { @MainActor in HotKeys.shared?.fired(which) }
+                return noErr
+            }, 1, &spec, nil, &handler)
+        }
+    }
+
     func unregister() {
         for ref in refs { UnregisterEventHotKey(ref) }
         refs = []
     }
 
     private func fired(_ id: UInt32) {
-        if id == 1 { onAllow() } else if id == 2 { onDeny() }
+        switch id {
+        case 1: onAllow()
+        case 2: onDeny()
+        case 3: onLaunchpad()
+        default: break
+        }
     }
 }
 

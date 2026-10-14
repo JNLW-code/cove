@@ -52,6 +52,12 @@ final class IslandController: NSObject {
     /// Called when the toolbar's settings button is pressed (the app opens its menu-bar menu).
     var onOpenMenu: (() -> Void)?
     private var hotKeys: HotKeys?
+    private var launchpadMonitors: [Any] = []
+    private var hotCornerMonitor: Any?
+    private var hotCornerArmed = true
+    /// The app that had the keyboard when the Launchpad opened; it gets it back when the Launchpad closes.
+    private var launchpadPrevious: NSRunningApplication?
+    private var swipeTurned = false
     private var peekSources: PeekSources?
     private var focusWatcher: FocusWatcher?
     private var peekQueue: [(PeekContent, Double)] = []
@@ -66,6 +72,7 @@ final class IslandController: NSObject {
     init(island: Island) {
         self.island = island
         island.notchSize = notch.size
+        island.screenWidth = notch.screen.frame.width
         host = IslandHostView(frame: NSRect(origin: .zero, size: notch.size))
         hosting = HostingView(rootView: IslandRoot(island: island, actions: actions))
         panel = IslandPanel(contentRect: notch.rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -119,9 +126,13 @@ final class IslandController: NSObject {
         island.claude.onChanged = { [weak self] in self?.claudeChanged() }
         island.claude.onCardsChanged = { [weak self] in self?.cardsChanged() }
         hotKeys = HotKeys(onAllow: { [weak self] in self?.answerFront(allow: true) },
-                          onDeny: { [weak self] in self?.answerFront(allow: false) })
+                          onDeny: { [weak self] in self?.answerFront(allow: false) },
+                          onLaunchpad: { [weak self] in self?.toggleLaunchpad() })
         island.hotKeyAllow = hotKeys?.allow.display ?? island.hotKeyAllow
         island.hotKeyDeny = hotKeys?.deny.display ?? island.hotKeyDeny
+        island.hotKeyLaunchpad = hotKeys?.launchpad.display ?? island.hotKeyLaunchpad
+        hotKeys?.registerLaunchpad()
+        setHotCorner(Settings.hotCorner)
         let socket = ClaudeSocket(onMessage: { [weak self] message in self?.island.claude.handle(message) },
                                   onRequestClosed: { [weak self] id in self?.island.claude.requestClosed(id) })
         island.claude.socket = socket
@@ -182,7 +193,97 @@ final class IslandController: NSObject {
     func shortcutsChanged() {
         island.hotKeyAllow = hotKeys?.allow.display ?? island.hotKeyAllow
         island.hotKeyDeny = hotKeys?.deny.display ?? island.hotKeyDeny
+        island.hotKeyLaunchpad = hotKeys?.launchpad.display ?? island.hotKeyLaunchpad
         if island.claude.frontCard != nil { hotKeys?.register() }
+        hotKeys?.registerLaunchpad()
+    }
+
+    // MARK: Launchpad
+
+    func toggleLaunchpad() {
+        if island.mode == .launchpad { collapse() } else { openLaunchpad() }
+    }
+
+    /// The big grid of apps hanging from the notch. The panel takes the keyboard for the search field
+    /// without activating Cove; the app you were in stays in front and gets the keys back on close.
+    func openLaunchpad() {
+        guard island.mode != .launchpad else { return }
+        hoverTask?.cancel()
+        island.launchpadQuery = ""
+        island.launchpadPage = 0
+        island.replyingTo = nil; island.notingFor = nil; island.editing = false
+        launchpadPrevious = NSWorkspace.shared.frontmostApplication
+        haptic()
+        show(.launchpad, animation: Self.openAnimation, settle: 0.55)
+        setPinned(true)
+        panel.makeKey()
+        installLaunchpadMonitors()
+    }
+
+    /// Enter in the search field, or a click on an icon.
+    func launch(_ app: AppEntry) {
+        haptic()
+        island.apps.open(app)
+        launchpadPrevious = nil   // the app just opened should keep the keyboard, not the one before
+        collapse()
+    }
+
+    func launchFirst() {
+        if let app = island.launchpadApps.first { launch(app) }
+    }
+
+    /// Esc: clears the search first, then closes.
+    func launchpadEscape() {
+        if island.launchpadQuery.isEmpty { collapse() } else { island.launchpadQuery = ""; island.launchpadPage = 0 }
+    }
+
+    func launchpadStep(_ delta: Int) {
+        let count = island.launchpadPageCount
+        guard count > 1 else { return }
+        withAnimation(Self.switchAnimation) { island.launchpadPage = (island.launchpadPage + delta + count) % count }
+    }
+
+    /// Two-finger swipe turns a page; one page per gesture.
+    private func installLaunchpadMonitors() {
+        removeLaunchpadMonitors()
+        if let m = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel, handler: { [weak self] event in
+            guard let self, self.island.mode == .launchpad else { return event }
+            if event.phase == .began || event.momentumPhase == .began { self.swipeTurned = false }
+            if !self.swipeTurned, abs(event.scrollingDeltaX) > 25, abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) {
+                self.swipeTurned = true
+                self.launchpadStep(event.scrollingDeltaX < 0 ? 1 : -1)
+            }
+            return event
+        }) { launchpadMonitors.append(m) }
+    }
+
+    private func removeLaunchpadMonitors() {
+        launchpadMonitors.forEach(NSEvent.removeMonitor)
+        launchpadMonitors = []
+    }
+
+    /// Hot corner (top-left of the notch screen) opens the Launchpad; it re-arms once the mouse has left the corner.
+    func setHotCorner(_ on: Bool) {
+        if on, hotCornerMonitor == nil {
+            hotCornerMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { _ in
+                Task { @MainActor in IslandController.shared?.mouseMovedForCorner() }
+            }
+        } else if !on, let monitor = hotCornerMonitor {
+            NSEvent.removeMonitor(monitor)
+            hotCornerMonitor = nil
+        }
+    }
+
+    private func mouseMovedForCorner() {
+        let frame = notch.screen.frame
+        let loc = NSEvent.mouseLocation
+        let inCorner = loc.x <= frame.minX + 2 && loc.y >= frame.maxY - 2
+        if inCorner, hotCornerArmed {
+            hotCornerArmed = false
+            if island.mode != .launchpad { openLaunchpad() }
+        } else if !inCorner, loc.x > frame.minX + 30 || loc.y < frame.maxY - 30 {
+            hotCornerArmed = true
+        }
     }
 
     private func answerFront(allow: Bool) {
@@ -280,13 +381,14 @@ final class IslandController: NSObject {
     /// Grows the panel to cover old and new, animates the content, then tightens the frame when the animation is done.
     func show(_ mode: Island.Mode, animation: Animation?, settle: Double = 0.4) {
         tightenTask?.cancel()
-        if mode != .expanded { setPinned(false) }
+        if mode != .expanded, mode != .launchpad { setPinned(false) }
+        if island.mode == .launchpad, mode != .launchpad { leaveLaunchpad() }
         let target = frame(for: mode)
         if pendingFrames.isEmpty { pendingFrames = [panel.frame] }
         pendingFrames.append(target)
         let union = pendingFrames.dropFirst().reduce(pendingFrames[0]) { $0.union($1) }
         if union != panel.frame { panel.setFrame(union, display: true) }
-        if mode == .expanded { panel.hasShadow = true }
+        if mode == .expanded || mode == .launchpad { panel.hasShadow = true }
         if let animation, !island.reduceMotion {
             withAnimation(animation) { island.mode = mode }
         } else {
@@ -299,14 +401,25 @@ final class IslandController: NSObject {
             guard !Task.isCancelled, let self, self.island.mode == mode else { return }
             self.pendingFrames = []
             self.panel.setFrame(target, display: true)
-            self.panel.hasShadow = mode == .expanded
+            self.panel.hasShadow = mode == .expanded || mode == .launchpad
             self.panel.invalidateShadow()
         }
     }
 
+    /// Leaving the Launchpad for any other mode: drop its monitors and hand the keyboard back.
+    private func leaveLaunchpad() {
+        removeLaunchpadMonitors()
+        island.launchpadQuery = ""
+        panel.makeFirstResponder(nil)
+        if let previous = launchpadPrevious, previous != NSRunningApplication.current, let url = previous.bundleURL {
+            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        }
+        launchpadPrevious = nil
+    }
+
     /// `byHover` is a real mouse-over; only then may a first-time permission prompt (Calendar) appear.
     func expand(byHover: Bool = false) {
-        guard island.mode != .expanded else { return }
+        guard island.mode != .expanded, island.mode != .launchpad else { return }
         island.volume.refresh()
         if !island.demo {
             island.spotifyModel.islandOpened()
@@ -353,7 +466,7 @@ final class IslandController: NSObject {
     // MARK: Hover and pin
 
     private func mouseEntered() {
-        guard !island.demo, !island.pinned, island.mode != .expanded else { return }
+        guard !island.demo, !island.pinned, island.mode != .expanded, island.mode != .launchpad else { return }
         hoverTask?.cancel()
         hoverTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250), tolerance: .milliseconds(30))
@@ -441,7 +554,7 @@ final class IslandController: NSObject {
             recentPeekKeys[key] = Date()
             if recentPeekKeys.count > 50 { recentPeekKeys = recentPeekKeys.filter { Date().timeIntervalSince($0.value) < 5 } }
         }
-        if peekTask != nil || (island.mode == .expanded && island.peek != nil) {
+        if peekTask != nil || ((island.mode == .expanded || island.mode == .launchpad) && island.peek != nil) {
             if peekQueue.count < 4 { peekQueue.append((content, seconds)) }
             return
         }
@@ -449,7 +562,7 @@ final class IslandController: NSObject {
         peekTask = nil
         island.peek = content
         if Settings.sound { NSSound(named: "Pop")?.play() }
-        if island.mode == .expanded {
+        if island.mode == .expanded || island.mode == .launchpad {
             pendingPeekSeconds = seconds
             return
         }
@@ -531,6 +644,7 @@ final class IslandController: NSObject {
     @objc private func screensChanged() {
         notch = NotchGeometry.current()
         island.notchSize = notch.size
+        island.screenWidth = notch.screen.frame.width
         panel.setFrame(frame(for: island.mode), display: true)
     }
 

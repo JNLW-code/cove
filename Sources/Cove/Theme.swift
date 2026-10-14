@@ -19,6 +19,8 @@ struct Palette {
     let accent, needsYou, done, blocked, focus: Color
     /// Anything drawn on the black notch shape uses these (dark appearance) in both themes.
     let onBlackLabel, onBlackSecondary, onBlackTertiary, onBlackQuaternary: Color
+    /// The Launchpad's flat "Matte" colours (James's spec): background, tiles, text, secondary text, accent.
+    let matteBackground, matteTile, matteLabel, matteSecondary, matteAccent: Color
 
     func color(_ tint: Tint) -> Color {
         switch tint {
@@ -63,8 +65,16 @@ enum Theme {
             accent: c(.controlAccentColor), needsYou: c(.systemOrange), done: c(.systemGreen),
             blocked: c(.systemRed), focus: c(.systemIndigo),
             onBlackLabel: c(.labelColor, dark), onBlackSecondary: c(.secondaryLabelColor, dark),
-            onBlackTertiary: c(.tertiaryLabelColor, dark), onBlackQuaternary: c(.quaternaryLabelColor, dark)
+            onBlackTertiary: c(.tertiaryLabelColor, dark), onBlackQuaternary: c(.quaternaryLabelColor, dark),
+            matteBackground: hex(isDark ? 0x16181F : 0xF7F8FA), matteTile: hex(isDark ? 0x21242D : 0xFBFBFC),
+            matteLabel: hex(isDark ? 0xE3E7EF : 0x1E2129), matteSecondary: hex(isDark ? 0xA4ABBA : 0x545A69),
+            matteAccent: hex(isDark ? 0x8FC7FF : 0x3B82D0)
         )
+    }
+
+    /// A fixed sRGB colour from a hex triplet. Only the Matte palette uses fixed colours; everything else is a system colour.
+    static func hex(_ value: UInt32) -> Color {
+        Color(.sRGB, red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
     }
 
     // MARK: Fonts (SF Pro; digits are monospaced so numbers never jitter)

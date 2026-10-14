@@ -79,6 +79,11 @@ enum Settings {
         get { UserDefaults.standard.bool(forKey: "peekSound") }
         set { UserDefaults.standard.set(newValue, forKey: "peekSound") }
     }
+    /// Top-left hot corner opens the Launchpad.
+    static var hotCorner: Bool {
+        get { UserDefaults.standard.bool(forKey: "launchpadHotCorner") }
+        set { UserDefaults.standard.set(newValue, forKey: "launchpadHotCorner") }
+    }
 }
 
 /// Do Not Disturb and other Focus modes, read from macOS's own Focus database. There is no public API for this

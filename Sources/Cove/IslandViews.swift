@@ -21,6 +21,11 @@ final class IslandActions {
     func setNote(_ text: String?, for session: ClaudeSession) { controller?.setNote(text, for: session) }
     func answerQuestion(_ card: QuestionCard, answers: [String: String]) { controller?.answerQuestion(card, answers: answers) }
     func spotify(_ command: SpotifyCommand) { controller?.spotify(command) }
+    func closeLaunchpad() { controller?.collapse() }
+    func launch(_ app: AppEntry) { controller?.launch(app) }
+    func launchFirst() { controller?.launchFirst() }
+    func launchpadEscape() { controller?.launchpadEscape() }
+    func launchpadStep(_ delta: Int) { controller?.launchpadStep(delta) }
 }
 
 /// Press feedback on every button: scale 0.97 in 120 ms.
@@ -80,6 +85,10 @@ struct IslandRoot: View {
             if island.mode == .expanded {
                 ExpandedIsland(island: island, actions: actions)
                     .transition(.scale(scale: 0.27, anchor: .top).combined(with: .opacity))
+                    .zIndex(1)
+            } else if island.mode == .launchpad {
+                LaunchpadView(island: island, actions: actions)
+                    .transition(.scale(scale: 0.94, anchor: .top).combined(with: .opacity))
                     .zIndex(1)
             }
             BlackShape(params: params)

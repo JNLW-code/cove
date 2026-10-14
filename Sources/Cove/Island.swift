@@ -78,7 +78,7 @@ struct BlackParams: Equatable {
 @MainActor
 @Observable
 final class Island {
-    enum Mode: Equatable { case resting, compact, peek, expanded }
+    enum Mode: Equatable { case resting, compact, peek, expanded, launchpad }
 
     static let expandedWidth: CGFloat = 662
     static let lobeWidth: CGFloat = 112
@@ -93,6 +93,8 @@ final class Island {
     private(set) var palette: Palette
     var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     var notchSize = CGSize(width: 179, height: 32)
+    /// Width of the screen the notch is on; the Launchpad takes 85 % of it, at most 1230.
+    var screenWidth: CGFloat = 1470
 
     private(set) var order: [TileKind]
     private(set) var hidden: Set<TileKind>
@@ -110,6 +112,10 @@ final class Island {
     let spotifyModel = SpotifyModel()
     let weatherModel = WeatherModel()
     let calendarModel = CalendarModel()
+    let apps = AppCatalog()
+    /// What is typed in the Launchpad's search field, and which page of the grid is showing.
+    var launchpadQuery = ""
+    var launchpadPage = 0
     /// Feedback under the reply box ("Sent", or why it could not be delivered).
     var replyStatus: String?
     /// The session whose row has its reply line open.
@@ -118,6 +124,7 @@ final class Island {
     var notingFor: String?
     var hotKeyAllow = HotKeys.defaultAllow.display
     var hotKeyDeny = HotKeys.defaultDeny.display
+    var hotKeyLaunchpad = HotKeys.defaultLaunchpad.display
 
     init() {
         let defaults = UserDefaults.standard
@@ -256,6 +263,32 @@ final class Island {
 
     var peekHeight: CGFloat { notchSize.height + (peek?.second == nil ? 24 : 40) }
 
+    // MARK: Launchpad
+
+    static let launchpadMaxWidth: CGFloat = 1230
+    static let launchpadColumns = 8
+    static let launchpadRows = 4
+    static let launchpadPageSize = launchpadColumns * launchpadRows
+    static let launchpadInset: CGFloat = 60
+    static let launchpadCell: CGFloat = 84
+    static let launchpadSearchHeight: CGFloat = 32
+    static let launchpadRadius: CGFloat = 44
+
+    var launchpadWidth: CGFloat { min(Self.launchpadMaxWidth, (screenWidth * 0.85).rounded()) }
+    /// Notch band, 12 gap, search, 22 gap, four rows, dots, bottom inset.
+    var launchpadHeight: CGFloat {
+        notchSize.height + 12 + Self.launchpadSearchHeight + 22 + CGFloat(Self.launchpadRows) * Self.launchpadCell + 10 + 16 + 18
+    }
+
+    /// The apps the grid shows: all of them, or the search matches.
+    var launchpadApps: [AppEntry] { apps.search(launchpadQuery) }
+    var launchpadPageCount: Int { max(1, Int((Double(launchpadApps.count) / Double(Self.launchpadPageSize)).rounded(.up))) }
+    var launchpadPageApps: [AppEntry] {
+        let all = launchpadApps
+        let start = min(launchpadPage, launchpadPageCount - 1) * Self.launchpadPageSize
+        return Array(all[min(start, all.count)..<min(start + Self.launchpadPageSize, all.count)])
+    }
+
     /// Size of the panel for a mode, including the ears on black shapes.
     func contentSize(for mode: Mode) -> CGSize {
         switch mode {
@@ -263,12 +296,13 @@ final class Island {
         case .compact: CGSize(width: pillWidth + 2 * Self.ear, height: notchSize.height)
         case .peek: CGSize(width: notchSize.width, height: peekHeight)
         case .expanded: CGSize(width: Self.expandedWidth, height: expandedHeight)
+        case .launchpad: CGSize(width: launchpadWidth, height: launchpadHeight)
         }
     }
 
     var blackParams: BlackParams {
         switch mode {
-        case .resting, .expanded: BlackParams(width: notchSize.width, height: notchSize.height, radius: 7, ear: 0)
+        case .resting, .expanded, .launchpad: BlackParams(width: notchSize.width, height: notchSize.height, radius: 7, ear: 0)
         case .compact: BlackParams(width: pillWidth, height: notchSize.height, radius: notchSize.height / 2, ear: Self.ear)
         case .peek: BlackParams(width: notchSize.width, height: peekHeight, radius: 14, ear: 0)
         }

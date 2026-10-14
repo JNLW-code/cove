@@ -96,6 +96,13 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         shortcutItems.append(item(custom ? "Your own: \(current)" : "Record your own…", #selector(recordShortcuts), on: custom))
         menu.addItem(submenu("Allow / Deny Shortcuts", shortcutItems))
 
+        let launchpad = item("Open  (\(island.hotKeyLaunchpad))", #selector(toggleLaunchpad), on: island.mode == .launchpad)
+        menu.addItem(submenu("Launchpad", [
+            launchpad,
+            item("Change Shortcut…", #selector(recordLaunchpadShortcut)),
+            item("Hot Corner (top-left)", #selector(toggleHotCorner), on: Settings.hotCorner),
+        ]))
+
         menu.addItem(.separator())
         menu.addItem(submenu("Permissions", permissionItems()))
         let login = item("Launch at Login", #selector(toggleLogin), on: LaunchAtLogin.isOn, enabled: LaunchAtLogin.isInstalledCopy)
@@ -241,6 +248,32 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         giveFocusBack(to: previous)
     }
 
+    @objc private func toggleLaunchpad() { controller?.toggleLaunchpad() }
+
+    @objc private func toggleHotCorner() {
+        Settings.hotCorner.toggle()
+        controller?.setHotCorner(Settings.hotCorner)
+    }
+
+    /// One box that records the keys for the Launchpad (default ⌘4).
+    @objc private func recordLaunchpadShortcut() {
+        let alert = NSAlert()
+        alert.messageText = "Launchpad shortcut"
+        alert.informativeText = "Click the box and press the keys you want. It works in every app, so pick one nothing else needs."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let box = KeyCaptureView(combo: HotKeys.load("launchpadKey", default: HotKeys.defaultLaunchpad))
+        alert.accessoryView = box
+        alert.window.initialFirstResponder = box
+        let previous = NSWorkspace.shared.frontmostApplication
+        NSApp.activate()
+        if alert.runModal() == .alertFirstButtonReturn, let combo = box.combo {
+            HotKeys.save(combo, for: "launchpadKey")
+            controller?.shortcutsChanged()
+        }
+        giveFocusBack(to: previous)
+    }
+
     /// System Settings → Privacy & Security → Full Disk Access. macOS has no prompt for this one; James adds Cove there.
     @objc private func openFullDiskAccess() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") { NSWorkspace.shared.open(url) }
@@ -283,6 +316,9 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "pin.toggle": controller.togglePin()
         case "menu.open": statusItem?.button?.performClick(nil)
         case "calendar.request": island.calendarModel.requestIfNeeded()
+        case "launchpad.toggle": controller.toggleLaunchpad()
+        case "launchpad.next": controller.launchpadStep(1)
+        case "launchpad.type": island.launchpadQuery = "ca"; island.launchpadPage = 0   // as if "ca" had been typed
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }

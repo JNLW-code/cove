@@ -1,6 +1,16 @@
 # Cove — plan
 
-**Status (14 Oct 2026, 2:55 pm, wrapped for a fresh session):** v1 plus steps 13–20 complete, installed in ~/Applications, hooks installed in ~/.claude/island, all committed on `main` (no remote, nothing pushed). The whole list James gave is done except the chips row, which he parked. Do Not Disturb peek confirmed live by James (14 Oct, 3 pm). **Untried by him:** Spotify tile (not installed), Launch at Login. **Next session starts with:** whatever James asks; otherwise nothing is queued.
+**Status (14 Oct 2026, 3:50 pm):** v1 plus steps 13–20 complete and confirmed; **Launchpad step 1 built** (see "Launchpad" below), installed in ~/Applications, all committed on `main` (no remote, nothing pushed). Chips row parked by James. **Untried by him:** Spotify tile (not installed), Launch at Login, Launchpad step 1. **Next:** Launchpad steps 2–7 in order once James has tried step 1.
+
+## Launchpad (James's brief, 14 Oct 2026; mockup in docs/mockups/launchpad.html)
+A Launchpad replacement that hangs from the notch as one big island card (his screenshots: search on top, one widget row, 8 × 4 grid of theme-tinted icons, page dots). Matte colours from his brief: dark #16181F / #21242D / #E3E7EF / #A4ABBA / #8FC7FF, light #F7F8FA / #FBFBFC / #1E2129 / #545A69 / #3B82D0 (`Palette.matte*`). Width 85 % of the notch screen, max 1230. Steps, each built and tried before the next:
+1. **Done (14 Oct):** `Island.Mode.launchpad`, `Apps.swift` (scan the four folders on a background task, follow symlinks, top level only, skip LSBackgroundOnly and names ending Helper/Handler/Agent/Daemon/Uninstaller, dedupe by bundle id, vnode watch with a 1.5 s debounce, icons rendered once at 48 pt @2x on a background task), `LaunchpadViews.swift` (search field focused on open, 8 × 4 pages, dots and arrows, first match highlighted while searching, Return opens, Esc clears then closes, ← → turn pages while nothing is typed, two-finger swipe via a local scrollWheel monitor, click on empty space closes), ⌘4 Carbon hot key always registered (`HotKeys.registerLaunchpad`, "Launchpad › Change Shortcut…"), top-left hot corner (global mouseMoved monitor only while the option is on, re-arms when the mouse leaves the corner), the previous app gets the keyboard back on close (`leaveLaunchpad`). Dev commands `launchpad.toggle` / `launchpad.next` / `launchpad.type`. 79 apps found on this Mac; 43 MB, 1 % CPU while open.
+2. By category: folders from LSApplicationCategoryType (Productivity, Creative, Developer, Music and video, Social, Utilities, Games, Other), first four icons and a count, back arrow.
+3. Widgets row: Now playing (Spotify via the existing model, Apple Music added), Weather (existing model), quick toggles (Wi-Fi, dark mode, volume first; Bluetooth and brightness need private frameworks → ask James), each switchable in the menu, row scales to fit.
+4. Notifications widget: banners read through Accessibility (AXObserver on com.apple.notificationcenterui), memory only, × per item, seen on close, Clear seen, new dot. Fragile; last of the features.
+5. Theme-linked icon style: switch macOS "Icon and widget style" with the theme and re-render icons in a helper process. Uncertain whether macOS exposes it; report honestly.
+6. Open on the screen where the mouse is (currently always the notch screen) — only if James wants it.
+Decisions taken: Launchpad is a third island state, not a window (James: "connected to the notch"); menu-bar apps (LSUIElement) stay in the grid, only true helpers are skipped; the card is opaque matte (no blurred wallpaper) because it sits under the notch, not over the whole screen.
 
 **Done:** everything in the 12 steps plus James's feedback: exact-session open via `claude://` link, Claude's last message on the Done card, reply box (hook path within 45 s of a question, else Cove opens the session, clicks the message box, pastes, Return, then hands focus back), reply arrow on every row, context % per row, layout A (card on top, numbered rows beneath, × and ‹ ›), centred tiles, Google Calendar via macOS Internet Accounts, **cost and turn count per row** (step 13), **answer AskUserQuestion from the island** (step 14), **git counts per row** (step 15), **approve plans from the island** (16), **per-turn cost on the Done card** (17), **row notes** (18), **shortcut recorder** (19), **Do Not Disturb / Focus peeks** (20, needs Full Disk Access).
 
@@ -140,7 +150,7 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 ## Later
 - Chips row from ref 5: YouTube, Window, Messages, Clipboard, Tray, Recents, Mac.
 - Do Not Disturb peek. Options for James to pick: (a) watch `~/Library/DoNotDisturb/DB/Assertions.json` with a DispatchSource (no polling) — needs Full Disk Access for Cove; (b) a paid Apple team to use INFocusStatusCenter; (c) leave it out.
-- Folder / tray shelf and the apps grid from the toolbar.
+- Folder / tray shelf from the toolbar (the apps grid is now the Launchpad, above).
 - Brightness and AirPlay (no public API).
 - A shortcut recorder (any key combo) instead of the four presets.
 - The three `onChange` copy closures in `IslandController` could become one computed override per tile.
