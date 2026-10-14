@@ -92,3 +92,51 @@ final class HotKeys {
         if id == 1 { onAllow() } else if id == 2 { onDeny() }
     }
 }
+
+/// A box in the shortcut alert: click it, press a combo (Control or Command required), it shows what it got.
+final class KeyCaptureView: NSView {
+    var combo: HotKeys.Combo? { didSet { label.stringValue = combo?.display ?? "Press keys…" } }
+    private let label = NSTextField(labelWithString: "Press keys…")
+
+    init(combo: HotKeys.Combo) {
+        super.init(frame: NSRect(x: 0, y: 0, width: 130, height: 26))
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor.separatorColor.cgColor
+        layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        label.alignment = .center
+        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.frame = bounds.insetBy(dx: 4, dy: 4)
+        label.autoresizingMask = [.width, .height]
+        addSubview(label)
+        self.combo = combo
+        label.stringValue = combo.display
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { nil }
+
+    override var intrinsicContentSize: NSSize { NSSize(width: 130, height: 26) }   // auto layout in the alert's grid needs a size
+    override var acceptsFirstResponder: Bool { true }
+    override func becomeFirstResponder() -> Bool { layer?.borderColor = NSColor.controlAccentColor.cgColor; return true }
+    override func resignFirstResponder() -> Bool { layer?.borderColor = NSColor.separatorColor.cgColor; return true }
+    override func mouseDown(with event: NSEvent) { window?.makeFirstResponder(self) }
+
+    /// Command combos would otherwise go to the alert's buttons first.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard window?.firstResponder === self else { return false }
+        keyDown(with: event)
+        return true
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let flags = event.modifierFlags.intersection([.control, .option, .shift, .command])
+        guard flags.contains(.control) || flags.contains(.command) else { NSSound.beep(); return }
+        var mods: UInt32 = 0
+        if flags.contains(.control) { mods |= UInt32(controlKey) }
+        if flags.contains(.option) { mods |= UInt32(optionKey) }
+        if flags.contains(.shift) { mods |= UInt32(shiftKey) }
+        if flags.contains(.command) { mods |= UInt32(cmdKey) }
+        combo = HotKeys.Combo(keyCode: UInt32(event.keyCode), modifiers: mods)
+    }
+}

@@ -89,7 +89,11 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ("⌃⇧A / ⌃⇧D", .init(keyCode: 0, modifiers: HotKeys.ctrlShift), .init(keyCode: 2, modifiers: HotKeys.ctrlShift)),
         ]
         let current = island.hotKeyAllow + " / " + island.hotKeyDeny
-        menu.addItem(submenu("Allow / Deny Shortcuts", combos.map { item($0.0, #selector(pickShortcut(_:)), $0.0, on: $0.0 == current) }))
+        var shortcutItems = combos.map { item($0.0, #selector(pickShortcut(_:)), $0.0, on: $0.0 == current) }
+        let custom = !combos.contains { $0.0 == current }
+        shortcutItems.append(.separator())
+        shortcutItems.append(item(custom ? "Your own: \(current)" : "Record your own…", #selector(recordShortcuts), on: custom))
+        menu.addItem(submenu("Allow / Deny Shortcuts", shortcutItems))
 
         menu.addItem(.separator())
         menu.addItem(submenu("Permissions", permissionItems()))
@@ -201,6 +205,38 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller?.shortcutsChanged()
     }
 
+    /// Two boxes that record whatever keys are pressed in them, saved as the Allow / Deny shortcuts.
+    @objc private func recordShortcuts() {
+        let alert = NSAlert()
+        alert.messageText = "Allow / Deny shortcuts"
+        alert.informativeText = "Click a box and press the keys you want. Use Control or Command in the combo; Option-only shortcuts may not register."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let allowBox = KeyCaptureView(combo: HotKeys.load("allowKey", default: HotKeys.defaultAllow))
+        let denyBox = KeyCaptureView(combo: HotKeys.load("denyKey", default: HotKeys.defaultDeny))
+        let grid = NSGridView(views: [[NSTextField(labelWithString: "Allow"), allowBox], [NSTextField(labelWithString: "Deny"), denyBox]])
+        grid.rowSpacing = 8
+        grid.columnSpacing = 10
+        grid.column(at: 0).xPlacement = .trailing
+        grid.frame = NSRect(origin: .zero, size: grid.fittingSize)
+        alert.accessoryView = grid
+        alert.window.initialFirstResponder = allowBox
+        let previous = NSWorkspace.shared.frontmostApplication
+        NSApp.activate()
+        if alert.runModal() == .alertFirstButtonReturn, let allow = allowBox.combo, let deny = denyBox.combo {
+            if allow == deny {
+                let same = NSAlert()
+                same.messageText = "Allow and Deny need different keys"
+                same.runModal()
+            } else {
+                HotKeys.save(allow, for: "allowKey")
+                HotKeys.save(deny, for: "denyKey")
+                controller?.shortcutsChanged()
+            }
+        }
+        giveFocusBack(to: previous)
+    }
+
     @objc private func toggleLogin() {
         if let message = LaunchAtLogin.toggle() {
             let alert = NSAlert()
@@ -241,6 +277,15 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }
+        case "test.seen": island.claude.frontCardFullySeen = true   // as if the long box had been scrolled to the end
+        case "test.note":   // first call opens the note line on the first row, second call keeps a sample note
+            if let s = island.claude.sessions.first {
+                if island.notingFor == nil { controller.editNote(for: s) } else { controller.setNote("waiting on Dave's PR", for: s) }
+            }
+        case "test.record":   // opens the shortcut recorder and closes it by itself after 3 s (a timer in common modes runs inside the modal loop)
+            let timer = Timer(timeInterval: 3, repeats: false) { _ in MainActor.assumeIsolated { NSApp.abortModal() } }
+            RunLoop.main.add(timer, forMode: .common)
+            recordShortcuts()
         case "test.answerq":   // first option of every question
             if let q = island.claude.frontQuestion {
                 controller.answerQuestion(q, answers: Dictionary(q.questions.map { ($0.text, $0.options[0].label) }, uniquingKeysWith: { a, _ in a }))

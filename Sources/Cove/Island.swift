@@ -114,6 +114,8 @@ final class Island {
     var replyStatus: String?
     /// The session whose row has its reply line open.
     var replyingTo: String?
+    /// The session whose note line is open under its row.
+    var notingFor: String?
     var hotKeyAllow = HotKeys.defaultAllow.display
     var hotKeyDeny = HotKeys.defaultDeny.display
 
@@ -206,6 +208,8 @@ final class Island {
     }
 
     static let longCommandBox: CGFloat = 128
+    /// The "why not?" line under a plan.
+    static let feedbackLine: CGFloat = 34
     static let replyRow: CGFloat = 40
 
     /// A command that needs the scrolling box: more than 2 lines or longer than one line of the card.
@@ -214,7 +218,9 @@ final class Island {
     }
 
     var cardHeight: CGFloat {
-        if let card = displayedCard { return Self.cardHeight + (Self.isLong(card.command) ? Self.longCommandBox : 0) }
+        if let card = displayedCard {
+            return Self.cardHeight + (card.isPlan || Self.isLong(card.command) ? Self.longCommandBox : 0) + (card.isPlan ? Self.feedbackLine : 0)
+        }
         if let question = displayedQuestion { return Self.questionCardHeight(question) }
         if let s = cardSession, case .done = s.state { return Self.cardHeight + (s.lastMessage != nil ? Self.longCommandBox : 0) + Self.replyRow }
         return Self.cardHeight
@@ -224,7 +230,8 @@ final class Island {
     var expandedHeight: CGFloat {
         let rows = claude.sessions.count
         let replyLine: CGFloat = replyingTo != nil && claude.sessions.contains(where: { $0.id == replyingTo }) ? Self.replyRow : 0
-        let strip: CGFloat = rows > 0 ? CGFloat(rows) * Self.rowHeight + replyLine + 8 : 0
+        let noteLine: CGFloat = notingFor != nil && claude.sessions.contains(where: { $0.id == notingFor }) ? Self.replyRow : 0
+        let strip: CGFloat = rows > 0 ? CGFloat(rows) * Self.rowHeight + replyLine + noteLine + 8 : 0
         if cardSession != nil { return notchSize.height + 18 + cardHeight + 8 + strip + 10 }
         let tiles: CGFloat = visibleTiles.isEmpty ? 0 : 94 + 18
         return notchSize.height + 18 + strip + tiles + (visibleTiles.isEmpty ? 10 : 0)
@@ -240,7 +247,7 @@ final class Island {
         case .needsYou: return CompactContent(kind: .needsYou, word: "Needs you", detail: s.label, count: count)
         case .done(let seconds, let files):
             let detail = files > 0 ? "\(files) file\(files == 1 ? "" : "s")" : s.label
-            return CompactContent(kind: .done, word: s.endsWithQuestion ? "Waiting for you" : "Done · \(durationText(seconds))", detail: detail, count: count)
+            return CompactContent(kind: .done, word: s.endsWithQuestion ? "Waiting for you" : (seconds > 0 ? "Done · \(durationText(seconds))" : "Done"), detail: detail, count: count)
         case .working(let step), .running(_, let step):
             return CompactContent(kind: .working, word: step.word, detail: s.label, count: count)
         default: return nil

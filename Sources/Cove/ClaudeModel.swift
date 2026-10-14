@@ -68,8 +68,11 @@ struct PermissionCard: Identifiable, Equatable {
     let agentID: String?
     let tool: String
     let inputKey: String?
-    let command: String     // what Claude wants to run, shown in full
+    let command: String     // what Claude wants to run (or the plan), shown in full
     let received: Date
+
+    /// ExitPlanMode: the card shows the plan with Approve / Keep planning instead of Allow / Deny.
+    var isPlan: Bool { tool == "ExitPlanMode" }
 }
 
 /// One of Claude's multiple-choice questions (AskUserQuestion), as its tool input describes it.
@@ -150,6 +153,8 @@ final class ClaudeSession: Identifiable {
     var replyRequestID: String?
     /// How full the context window is, 0–100, when known.
     var contextPercent: Int?
+    /// A one-line note James pinned to the row ("waiting on Dave's PR"); gone when the session ends.
+    var note: String?
     /// Git, from the hook at each prompt and Stop: files not committed, commits not pushed (nil = unknown / no upstream).
     var dirtyFiles: Int?
     var unpushed: Int?
@@ -158,6 +163,9 @@ final class ClaudeSession: Identifiable {
     /// What the session has cost so far and how many prompts it has had, from the transcript.
     var usage = UsageTotals()
     var usageRead = Date.distantPast
+    /// The session's total when the current turn started, so the Done card can say what the turn cost.
+    var costAtTurnStart: Double?
+    var turnCost: Double? { costAtTurnStart.map { max(0, usage.costUSD - $0) } }
     var state: State = .idle
     var turnStart: Date?
     var lastEvent = Date()
@@ -299,7 +307,8 @@ final class ClaudeModel {
         if let path = m.string("transcript_path"), !path.isEmpty { s.transcriptPath = path }
         let agent = m.string("agent_id")
         switch m.event {
-        case "SessionStart", "UserPromptSubmit", "Stop": readUsage(s)
+        case "UserPromptSubmit": readUsage(s, startsTurn: true)
+        case "SessionStart", "Stop": readUsage(s)
         case "PreToolUse" where Date().timeIntervalSince(s.usageRead) > Self.usageEvery: readUsage(s)   // long turns stay current
         default: break
         }
@@ -347,7 +356,8 @@ final class ClaudeModel {
                                 word: "Blocked · \(s.label)", second: String(what.prefix(60))), 4)
         case "Stop":
             if agent == nil {
-                let seconds = Int(Date().timeIntervalSince(s.turnStart ?? Date()))
+                // No turn start seen (Cove launched mid-turn): "Done" with no duration rather than "Done in 0 s".
+                let seconds = s.turnStart.map { Int(Date().timeIntervalSince($0)) } ?? 0
                 s.endsWithQuestion = m.bool("ends_with_question") ?? false
                 if let text = m.string("last_message"), !text.isEmpty { s.lastMessage = text }
                 closeReply(s)
@@ -377,6 +387,7 @@ final class ClaudeModel {
         case "PermissionRequest":
             guard let requestID = m.string("request_id") else { break }
             let tool = m.string("tool_name") ?? ""
+            Log.app.notice("Permission request for \(tool, privacy: .public)")   // the tool name only, never its input
             if tool == "AskUserQuestion" {
                 s.state = .needsYou(.question); s.attentionSeen = false
                 if let parsed = ClaudeQuestion.parse(inputJSON: m.string("tool_input")) {
@@ -388,7 +399,18 @@ final class ClaudeModel {
                 }
                 break
             }
-            if tool == "ExitPlanMode" { s.state = .needsYou(.plan); s.attentionSeen = false; break }
+            if tool == "ExitPlanMode" {
+                s.state = .needsYou(.plan); s.attentionSeen = false
+                if let plan = Self.planText(inputJSON: m.string("tool_input")) {
+                    cards.append(PermissionCard(id: requestID, sessionID: s.id, agentID: agent, tool: tool,
+                                                inputKey: m.string("input_key"), command: plan, received: Date()))
+                    if cards.count == 1 { frontCardShownAt = Date(); frontCardFullySeen = false }
+                    onCardsChanged?()
+                } else {
+                    socket?.close(request: requestID)   // no plan text to show: Claude asks in the app
+                }
+                break
+            }
             let command = Self.describe(tool: tool, inputJSON: m.string("tool_input"))
             cards.append(PermissionCard(id: requestID, sessionID: s.id, agentID: agent, tool: tool,
                                         inputKey: m.string("input_key"), command: command, received: Date()))
@@ -405,14 +427,16 @@ final class ClaudeModel {
     static let usageEvery: TimeInterval = 60
 
     /// Totals the transcript's new lines off the main thread, then updates the row.
-    private func readUsage(_ s: ClaudeSession) {
+    private func readUsage(_ s: ClaudeSession, startsTurn: Bool = false) {
         guard let path = s.transcriptPath else { return }
         s.usageRead = Date()
         let id = s.id
         Task { [weak self] in
             guard let self else { return }
             let totals = await self.reader.refresh(session: id, transcript: path)
-            guard let s = self.session(id), s.usage != totals else { return }
+            guard let s = self.session(id) else { return }
+            if startsTurn { s.costAtTurnStart = totals.costUSD }   // the hook runs before Claude answers, so nothing of this turn is in yet
+            guard s.usage != totals else { return }
             s.usage = totals
             self.onChanged?()
         }
@@ -425,6 +449,15 @@ final class ClaudeModel {
            let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
            let model = json["model"] as? String, model.contains("[1m]") { return 1_000_000 }
         return 200_000
+    }
+
+    /// The plan Claude Code injects into ExitPlanMode's input.
+    static func planText(inputJSON: String?) -> String? {
+        guard let inputJSON, let data = inputJSON.data(using: .utf8),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let plan = object["plan"] as? String else { return nil }
+        let trimmed = plan.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     /// Plain text of what a tool wants to do: the full command for Bash, the path for file tools, else the input.
@@ -525,17 +558,20 @@ final class ClaudeModel {
             onCardSettled?(card)
         }
         if cards.first?.id != front { frontCardShownAt = Date(); frontCardFullySeen = false; onCardsChanged?() }
-        if let s = session(sessionID), !cards.contains(where: { $0.sessionID == sessionID }), s.needsYou == .permission {
+        if let s = session(sessionID), !cards.contains(where: { $0.sessionID == sessionID }), s.needsYou == .permission || s.needsYou == .plan {
             s.state = s.inFlight.isEmpty ? .idle : .working(s.inFlight.values.first?.step ?? .running)
         }
     }
 
-    func answer(_ card: PermissionCard, allow: Bool) {
-        socket?.reply(to: card.id, decision: allow ? "allow" : "deny")
+    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil) {
+        socket?.reply(to: card.id, decision: allow ? "allow" : "deny", message: allow ? nil : message)
         cards.removeAll { $0.id == card.id }
         if let s = session(card.sessionID) {
             s.lastAnswered = Date()
-            if !cards.contains(where: { $0.sessionID == s.id }) { s.state = allow ? .working(.running) : .idle }
+            if !cards.contains(where: { $0.sessionID == s.id }) {
+                // A plan approved or sent back: Claude gets going either way.
+                s.state = card.tool == "ExitPlanMode" ? .working(.thinking) : (allow ? .working(.running) : .idle)
+            }
         }
         frontCardShownAt = Date()
         frontCardFullySeen = false

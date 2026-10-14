@@ -22,6 +22,12 @@ if [ "$MODE" = down ]; then
   exit 0
 fi
 [ -S "$SOCK" ] || { echo "Cove is not running (no socket at $SOCK)"; exit 1; }
+if [ "$MODE" = plan ]; then
+  echo "== ExitPlanMode through the real helper (Approve / Keep planning on the island, or test.allow / test.deny with COVE_UI_TEST=1)"
+  python3 -c 'import json,sys; plan="# Add git badges to rows\n\n" + "\n".join(f"{i}. Step {i}: do the thing, check it, commit." for i in range(1,31)); print(json.dumps({"session_id":sys.argv[1],"cwd":"/Users/jameswebster/Desktop/quoteflow-v3","permission_mode":"plan","hook_event_name":"PermissionRequest","tool_name":"ExitPlanMode","tool_input":{"plan":plan,"planFilePath":"/tmp/plan.md"}}))' "$A" \
+    | COVE_HOOK_WAIT=${COVE_HOOK_WAIT:-40} /usr/bin/time -p "$HELPER" PermissionRequest; echo "exit $?"
+  exit 0
+fi
 if [ "$MODE" = question ]; then
   echo "== AskUserQuestion through the real helper (answer it on the island, or notifyutil -p com.jameswebster.cove.test.answerq with COVE_UI_TEST=1)"
   printf '{"session_id":"%s","cwd":"/Users/jameswebster/Desktop/quoteflow-v3","permission_mode":"default","hook_event_name":"PermissionRequest","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Which layout should the settings page use?","header":"Layout","options":[{"label":"Tabs","description":"One tab per section, like System Settings"},{"label":"One page","description":"Everything on one scrolling page"},{"label":"Sidebar","description":"Sections down the left, content on the right"}],"multiSelect":false},{"question":"Which of these should it remember between launches?","header":"Memory","options":[{"label":"Window size","description":""},{"label":"Last tab","description":""},{"label":"Search text","description":""}],"multiSelect":true}]}}' "$A" \

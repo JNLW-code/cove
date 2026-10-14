@@ -41,7 +41,7 @@ This quits Cove and removes `~/Applications/Cove.app`, the `build/` folder, `~/L
 
 ## Demo and test controls
 
-The menu's **Demo** item cycles through every island state with sample data. `make fake` drives three Claude sessions through every state over the socket (Cove must be running); `scripts/fake-events.sh down` tests the hook helper with Cove quit. From a shell you can also drive the island: `scripts/fake-events.sh question` feeds Claude's multiple-choice question through the real hook helper so you can answer it on the island.
+The menu's **Demo** item cycles through every island state with sample data. `make fake` drives three Claude sessions through every state over the socket (Cove must be running); `scripts/fake-events.sh down` tests the hook helper with Cove quit. From a shell you can also drive the island: `scripts/fake-events.sh question` feeds Claude's multiple-choice question through the real hook helper so you can answer it on the island. `scripts/fake-events.sh plan` does the same with a plan to approve.
 
 ```bash
 notifyutil -p com.jameswebster.cove.show.expanded

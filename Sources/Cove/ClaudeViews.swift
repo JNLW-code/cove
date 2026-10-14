@@ -12,13 +12,22 @@ struct ClaudeStrip: View {
                 SessionRow(session: session, island: island, actions: actions)
                     .contentShape(Rectangle())
                     .onTapGesture { actions.rowClicked(session) }
+                    .contextMenu {
+                        Button(session.note == nil ? "Add a note…" : "Edit the note…") { actions.editNote(for: session) }
+                        if session.note != nil { Button("Clear the note") { actions.setNote(nil, for: session) } }
+                    }
                     .overlay(alignment: .bottom) {
-                        if session.id != island.claude.sessions.last?.id || island.replyingTo == session.id {
+                        if session.id != island.claude.sessions.last?.id || island.replyingTo == session.id || island.notingFor == session.id {
                             Rectangle().fill(p.rim).frame(height: 1)
                         }
                     }
                 if island.replyingTo == session.id {
                     ReplyLine(session: session, island: island, actions: actions, autoFocus: true)
+                        .padding(.horizontal, 14)
+                        .frame(height: Island.replyRow)
+                }
+                if island.notingFor == session.id {
+                    NoteLine(session: session, island: island, actions: actions)
                         .padding(.horizontal, 14)
                         .frame(height: Island.replyRow)
                 }
@@ -61,11 +70,16 @@ struct SessionRow: View {
             leading(p)
             Text(session.label).font(Theme.font(12, .semibold)).foregroundStyle(p.label)
                 .lineLimit(1).truncationMode(.middle).layoutPriority(1)
+            if let note = session.note {
+                Text(note).font(Theme.font(11)).italic().foregroundStyle(p.secondaryLabel).lineLimit(1).truncationMode(.tail)
+                    .frame(maxWidth: 170, alignment: .leading)
+            }
             HStack(spacing: 5) {
                 Image(systemName: stepSymbol).font(.system(size: 11, weight: .medium)).foregroundStyle(stepColor(p))
                 Text(stepWord).font(Theme.font(12)).foregroundStyle(p.secondaryLabel)
             }
             .lineLimit(1)
+            .layoutPriority(1)   // the step word outranks the note and the badges
             if !session.agents.isEmpty {
                 Text("+\(session.agents.count) agent\(session.agents.count == 1 ? "" : "s")")
                     .font(Theme.font(11)).foregroundStyle(p.tertiaryLabel)
@@ -76,6 +90,7 @@ struct SessionRow: View {
             trailing(p)
             if let stats = statsText {
                 Text(stats).font(Theme.digits(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1).fixedSize()
+                    .help(session.usage.turns > 0 ? "\(session.usage.turns) turn\(session.usage.turns == 1 ? "" : "s") · \(stats) so far" : stats)
             }
             if let percent = session.contextPercent {
                 Text("\(percent)%").font(Theme.digits(11, .medium))
@@ -106,13 +121,8 @@ struct SessionRow: View {
         .fixedSize()
     }
 
-    /// "64 turns · $87" from the transcript; each part hidden while it is 0.
-    private var statsText: String? {
-        var parts: [String] = []
-        if session.usage.turns > 0 { parts.append("\(session.usage.turns) turn\(session.usage.turns == 1 ? "" : "s")") }
-        if session.usage.costUSD >= 0.005 { parts.append(costText(session.usage.costUSD)) }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
+    /// "$87" from the transcript (the turn count is in the tooltip, to keep the row short); hidden at 0.
+    private var statsText: String? { session.usage.costUSD >= 0.005 ? costText(session.usage.costUSD) : nil }
 
     @ViewBuilder private func leading(_ p: Palette) -> some View {
         switch session.state {
@@ -157,7 +167,7 @@ struct SessionRow: View {
             case .plan: return "Plan ready"
             }
         case .done(let seconds, let files):
-            let base = session.endsWithQuestion ? "Waiting for you" : "Done · \(durationText(seconds))"
+            let base = session.endsWithQuestion ? "Waiting for you" : (seconds > 0 ? "Done · \(durationText(seconds))" : "Done")
             return files > 0 ? "\(base) · \(files) file\(files == 1 ? "" : "s")" : base
         case .waiting(let since): return "Waiting · \(shortAge(Int(Date().timeIntervalSince(since))))"
         case .quiet: return "Quiet"
@@ -310,7 +320,7 @@ struct ClaudeCard: View {
 
     private var title: String {
         switch session.state {
-        case .done(let seconds, _): session.endsWithQuestion ? "Waiting for you" : "Done in \(durationText(seconds))"
+        case .done(let seconds, _): session.endsWithQuestion ? "Waiting for you" : (seconds > 0 ? "Done in \(durationText(seconds))" : "Done")
         case .needsYou(.question): "Claude has a question"
         case .needsYou(.plan): "Claude's plan is ready"
         case .needsYou(.askingInApp): "Claude is asking in the app"
@@ -326,6 +336,7 @@ struct ClaudeCard: View {
             if !session.agents.isEmpty { parts.append("\(session.agents.count) agent\(session.agents.count == 1 ? "" : "s") running") }
             if let n = session.dirtyFiles, n > 0 { parts.append("\(n) not committed") }
             if let n = session.unpushed, n > 0 { parts.append("\(n) commit\(n == 1 ? "" : "s") to push") }
+            if let cost = session.turnCost, cost >= 0.005 { parts.append("\(costText(cost)) this turn") }
             return parts.isEmpty ? "Nothing changed" : parts.joined(separator: " · ")
         case .needsYou(.question), .needsYou(.plan): return "Answer it in the app"
         case .needsYou(.askingInApp): return "The island could not take this one"
@@ -342,11 +353,12 @@ struct PermissionCardView: View {
     var island: Island
     let actions: IslandActions
     @State private var scrolledToEnd = false
+    @State private var feedback = ""
 
     var body: some View {
         let p = island.palette
         let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
-        let long = Island.isLong(card.command)
+        let long = card.isPlan || Island.isLong(card.command)
         let allowOn = long ? scrolledToEnd : true
         ZStack(alignment: .leading) {
             shape.fill(p.tile).overlay(shape.strokeBorder(p.needsYou, lineWidth: 1))
@@ -356,11 +368,11 @@ struct PermissionCardView: View {
                     .padding(.top, long ? 24 : 0)
                 VStack(alignment: .leading, spacing: long ? 6 : 4) {
                     HStack(spacing: 8) {
-                        Text("Claude needs your OK").font(Theme.font(14, .bold)).foregroundStyle(p.label)
+                        Text(card.isPlan ? "Claude's plan is ready" : "Claude needs your OK").font(Theme.font(14, .bold)).foregroundStyle(p.label)
                     }
                     if long {
                         ScrollView(.vertical) {
-                            Text(card.command).font(Theme.mono(12)).foregroundStyle(p.label)
+                            Text(card.command).font(card.isPlan ? Theme.font(12) : Theme.mono(12)).foregroundStyle(p.label)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 10).padding(.vertical, 8)
                                 .textSelection(.enabled)
@@ -373,7 +385,15 @@ struct PermissionCardView: View {
                         } action: { _, atEnd in
                             if atEnd { scrolledToEnd = true; island.claude.frontCardFullySeen = true }
                         }
-                        Text(scrolledToEnd ? "Full command seen · \(lines) lines" : "Scroll to the end to turn on Allow · \(lines) lines")
+                        if card.isPlan {
+                            TextField("Why not? Goes to Claude with Keep planning (optional)", text: $feedback)
+                                .textFieldStyle(.plain).font(Theme.font(12)).foregroundStyle(p.label)
+                                .padding(.horizontal, 10).frame(height: 26)
+                                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                        }
+                        Text(scrolledToEnd ? "\(card.isPlan ? "Full plan" : "Full command") seen · \(lines) lines"
+                                           : "Scroll to the end to turn on \(card.isPlan ? "Approve" : "Allow") · \(lines) lines")
                             .font(Theme.font(11)).foregroundStyle(p.tertiaryLabel)
                     } else {
                         Text(card.command).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1).truncationMode(.tail)
@@ -384,8 +404,8 @@ struct PermissionCardView: View {
                 .padding(.vertical, long ? 18 : 0)
                 Spacer(minLength: 12)
                 VStack(spacing: 6) {
-                    pill("Allow", island.hotKeyAllow, p.allowBackground, p.allowText, on: allowOn && !island.claude.frontCardGuarded) { actions.answer(card, allow: true) }
-                    pill("Deny", island.hotKeyDeny, p.deny, p.label, on: true) { actions.answer(card, allow: false) }
+                    pill(card.isPlan ? "Approve" : "Allow", island.hotKeyAllow, p.allowBackground, p.allowText, on: allowOn && !island.claude.frontCardGuarded) { actions.answer(card, allow: true) }
+                    pill(card.isPlan ? "Keep planning" : "Deny", island.hotKeyDeny, p.deny, p.label, on: true) { actions.answer(card, allow: false, message: feedback) }
                 }
                 .padding(.trailing, 20)
                 .padding(.top, long ? 24 : 0)
@@ -404,7 +424,7 @@ struct PermissionCardView: View {
                 Text(key).font(Theme.font(10.5)).opacity(0.55)
             }
             .foregroundStyle(fg)
-            .frame(width: 85, height: 30)
+            .frame(width: card.isPlan ? 140 : 85, height: 30)
             .background(Capsule().fill(bg))
         }
         .buttonStyle(PressStyle())
@@ -512,6 +532,39 @@ struct QuestionCardView: View {
         picked = []
         typed = ""
         if index + 1 < card.questions.count { index += 1 } else { actions.answerQuestion(card, answers: answers) }
+    }
+}
+
+/// One line to type a note for the row; Return keeps it, Escape or an empty line clears it.
+struct NoteLine: View {
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let p = island.palette
+        HStack(spacing: 8) {
+            Image(systemName: "note.text").font(.system(size: 11, weight: .medium)).foregroundStyle(p.tertiaryLabel)
+            TextField("Note for this row, e.g. waiting on Dave's PR", text: $text)
+                .textFieldStyle(.plain)
+                .font(Theme.font(12.5))
+                .foregroundStyle(p.label)
+                .focused($focused)
+                .onSubmit { actions.setNote(text, for: session) }
+                .onExitCommand { actions.setNote(session.note, for: session) }
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(focused ? p.accent : p.rim, lineWidth: 1))
+            Button { actions.setNote(text, for: session) } label: {
+                Text("Keep").font(Theme.font(12, .semibold)).foregroundStyle(p.allowText)
+                    .frame(width: 56, height: 28).background(Capsule().fill(p.allowBackground))
+            }
+            .buttonStyle(PressStyle())
+        }
+        .onAppear { text = session.note ?? ""; focused = true }
     }
 }
 

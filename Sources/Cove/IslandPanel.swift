@@ -201,13 +201,16 @@ final class IslandController: NSObject {
     }
 
     /// Allow or Deny from a button or shortcut. Ignored for 400 ms after a card appears or moves on.
-    func answer(_ card: PermissionCard, allow: Bool) {
+    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil) {
         guard !island.claude.frontCardGuarded, island.displayedCard?.id == card.id else { return }
-        if allow, Island.isLong(card.command), !island.claude.frontCardFullySeen { return }
+        if allow, card.isPlan || Island.isLong(card.command), !island.claude.frontCardFullySeen { return }
         haptic()
-        island.claude.answer(card, allow: allow)
-        let content = allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Allowed", second: nil)
-                            : PeekContent(symbol: "xmark", icon: nil, tint: .blocked, word: "Denied", second: nil)
+        island.claude.answer(card, allow: allow, message: message)
+        let content = card.isPlan
+            ? (allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Plan approved", second: nil)
+                     : PeekContent(symbol: "arrow.uturn.left", icon: nil, tint: .needsYou, word: "Keep planning", second: nil))
+            : (allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Allowed", second: nil)
+                     : PeekContent(symbol: "xmark", icon: nil, tint: .blocked, word: "Denied", second: nil))
         if island.claude.frontCard == nil { showPeek(content, seconds: 1.5) }
     }
 
@@ -227,7 +230,7 @@ final class IslandController: NSObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         haptic()
-        island.replyingTo = nil
+        island.replyingTo = nil; island.notingFor = nil
         let previous = NSWorkspace.shared.frontmostApplication
         if island.claude.replyThroughHook(session, text: trimmed) {
             Log.app.notice("Reply delivered through the Stop hook")
@@ -309,6 +312,22 @@ final class IslandController: NSObject {
     }
 
     /// Opens or closes the reply line under a row; the island stays open while it is showing.
+    /// Right-click → note: a line under the row to type it; Return keeps it on the row until the session ends.
+    func editNote(for session: ClaudeSession) {
+        island.replyingTo = nil
+        island.notingFor = session.id
+        setPinned(true)
+        show(.expanded, animation: Self.switchAnimation)
+    }
+
+    func setNote(_ text: String?, for session: ClaudeSession) {
+        let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        session.note = trimmed.isEmpty ? nil : trimmed
+        island.notingFor = nil
+        island.claude.onChanged?()
+        show(.expanded, animation: Self.switchAnimation)
+    }
+
     func toggleReply(for session: ClaudeSession) {
         if island.replyingTo == session.id { island.replyingTo = nil } else { island.replyingTo = session.id; setPinned(true) }
         show(.expanded, animation: Self.switchAnimation)
@@ -316,7 +335,7 @@ final class IslandController: NSObject {
 
     func collapse() {
         island.editing = false
-        island.replyingTo = nil
+        island.replyingTo = nil; island.notingFor = nil
         setPinned(false)
         panel.makeFirstResponder(nil)
         island.claude.markDoneSeen()

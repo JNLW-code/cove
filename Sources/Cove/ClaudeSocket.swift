@@ -139,9 +139,11 @@ final class ClaudeSocket {
         }
     }
 
-    /// Answers a waiting PermissionRequest hook and closes its connection.
-    func reply(to requestID: String, decision: String) {
-        send(["request_id": requestID, "decision": decision], to: requestID)
+    /// Answers a waiting PermissionRequest hook and closes its connection. A deny may carry a message for Claude.
+    func reply(to requestID: String, decision: String, message: String? = nil) {
+        var object: [String: Any] = ["request_id": requestID, "decision": decision]
+        if let message, !message.isEmpty { object["message"] = message }
+        send(object, to: requestID)
     }
 
     /// Sends James's typed reply down a waiting Stop hook.

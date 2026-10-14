@@ -168,9 +168,7 @@ guard written == line.count else { finish() }
 let waitsForReply = event == "Stop" && message["request_id"] != nil
 guard event == "PermissionRequest" || waitsForReply else { finish() }
 
-// ExitPlanMode is never answered from the island; the app was told, Claude asks as usual.
-// AskUserQuestion waits like a permission: the island can send the chosen answers back.
-if toolName == "ExitPlanMode" { finish() }
+// AskUserQuestion and ExitPlanMode wait like a permission: the island sends answers / approval back.
 
 // Away (screen locked, or no input for a minute) → let Claude's own prompt and the phone handle it.
 if let session = CGSessionCopyCurrentDictionary() as? [String: Any],
@@ -218,9 +216,23 @@ guard let decision = replyObject["decision"] as? String else { finish() }
 
 switch decision {
 case "allow":
-    print(#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#)
+    // ExitPlanMode needs the input echoed back with the allow (like a question's answers).
+    if toolName == "ExitPlanMode", let toolInput,
+       let out = try? JSONSerialization.data(withJSONObject: ["hookSpecificOutput": ["hookEventName": "PermissionRequest",
+                                                              "decision": ["behavior": "allow", "updatedInput": toolInput]]]),
+       let line = String(data: out, encoding: .utf8) {
+        print(line)
+    } else {
+        print(#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#)
+    }
 case "deny":
-    print(#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from the island"}}}"#)
+    // "Keep planning" can carry James's feedback as the message Claude sees.
+    let message = (replyObject["message"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Denied from the island"
+    if let out = try? JSONSerialization.data(withJSONObject: ["hookSpecificOutput": ["hookEventName": "PermissionRequest",
+                                                              "decision": ["behavior": "deny", "message": message]]]),
+       let line = String(data: out, encoding: .utf8) {
+        print(line)
+    }
 default:
     break
 }
