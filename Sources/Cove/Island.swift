@@ -34,7 +34,7 @@ enum LaunchpadWidget: String, CaseIterable, Sendable {
         switch self {
         case .nowPlaying: 262
         case .weather: 172
-        case .toggles: 150
+        case .toggles: 190
         case .sound, .keyboard, .display: 160
         }
     }

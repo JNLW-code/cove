@@ -395,36 +395,41 @@ struct WeatherWidget: View {
     }
 }
 
-/// Wi-Fi, dark mode and mute as buttons. (Sound, Keyboard and Display are slider tiles of their own.)
+/// Wi-Fi, dark mode and sound as Control Centre's round buttons: a translucent circle, filled blue when on,
+/// a small name underneath. (Sound, Keyboard and Display are slider tiles of their own.)
 struct TogglesWidget: View {
     var island: Island
 
     var body: some View {
         let t = island.toggles
         let v = island.volume
-        HStack(spacing: 8) {
-            toggle("wifi", on: t.wifiOn, enabled: t.wifiAvailable, help: "Wi-Fi") { t.toggleWifi() }
-            toggle("circle.lefthalf.filled", on: t.darkMode, enabled: true, help: "Dark mode") { t.toggleDarkMode() }
-            toggle(v.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", on: !v.muted, enabled: v.available, help: "Mute") { v.toggleMute() }
+        HStack(spacing: 14) {
+            toggle("wifi", name: "Wi-Fi", on: t.wifiOn, enabled: t.wifiAvailable) { t.toggleWifi() }
+            toggle("circle.lefthalf.filled", name: "Dark", on: t.darkMode, enabled: true) { t.toggleDarkMode() }
+            toggle(v.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", name: "Sound", on: !v.muted, enabled: v.available) { v.toggleMute() }
         }
         .padding(.horizontal, 12)
         .frame(height: Island.widgetHeight)
     }
 
-    private func toggle(_ symbol: String, on: Bool, enabled: Bool, help: String, action: @escaping () -> Void) -> some View {
+    private func toggle(_ symbol: String, name: String, on: Bool, enabled: Bool, action: @escaping () -> Void) -> some View {
         let p = island.palette
         return Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(on ? (p.isDark ? Color.black : .white) : p.matteSecondary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? p.matteAccent : p.matteSecondary.opacity(0.18)))
+            VStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(on ? Color.white : p.matteLabel)
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(on ? Color(nsColor: .systemBlue) : p.matteLabel.opacity(p.isGlass ? 0.12 : 0.1)))
+                    .overlay(Circle().strokeBorder(Color.white.opacity(on ? 0.25 : 0.12), lineWidth: 0.5))
+                Text(name).font(Theme.font(10)).foregroundStyle(p.matteSecondary).lineLimit(1)
+            }
+            .frame(width: 44)
         }
-        .buttonStyle(PressStyle(radius: 10))
+        .buttonStyle(PressStyle(radius: 12, inset: 2))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
-        .help(help)
+        .help(name)
     }
 }
 
@@ -467,9 +472,10 @@ struct ThickSlider: View {
             let knob: CGFloat = 20
             let x = knob / 2 + CGFloat(min(1, max(0, shown))) * (width - knob)
             ZStack(alignment: .leading) {
-                Capsule().fill(palette.matteSecondary.opacity(0.28)).frame(height: 8)
-                Capsule().fill(palette.matteLabel).frame(width: x + knob / 2, height: 8)
-                Circle().fill(palette.isDark ? Color.white : Color.white)
+                Capsule().fill(palette.matteLabel.opacity(palette.isDark ? 0.22 : 0.14)).frame(height: 8)
+                Capsule().fill(Color.white).frame(width: x + knob / 2, height: 8)
+                    .shadow(color: .black.opacity(0.08), radius: 0.5)
+                Circle().fill(Color.white)
                     .overlay(Circle().strokeBorder(Color.black.opacity(0.08), lineWidth: 0.5))
                     .shadow(color: .black.opacity(0.18), radius: 1.5, y: 0.5)
                     .frame(width: knob, height: knob)
