@@ -196,6 +196,7 @@ final class IslandController: NSObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         haptic()
+        island.replyingTo = nil
         let previous = NSWorkspace.shared.frontmostApplication
         if island.claude.replyThroughHook(session, text: trimmed) {
             Log.app.notice("Reply delivered through the Stop hook")
@@ -269,8 +270,15 @@ final class IslandController: NSObject {
         show(.expanded, animation: Self.openAnimation, settle: 0.55)
     }
 
+    /// Opens or closes the reply line under a row; the island stays open while it is showing.
+    func toggleReply(for session: ClaudeSession) {
+        if island.replyingTo == session.id { island.replyingTo = nil } else { island.replyingTo = session.id; setPinned(true) }
+        show(.expanded, animation: Self.switchAnimation)
+    }
+
     func collapse() {
         island.editing = false
+        island.replyingTo = nil
         setPinned(false)
         panel.makeFirstResponder(nil)
         island.claude.markDoneSeen()

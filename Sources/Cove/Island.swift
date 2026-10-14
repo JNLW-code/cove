@@ -112,6 +112,8 @@ final class Island {
     let calendarModel = CalendarModel()
     /// Feedback under the reply box ("Sent", or why it could not be delivered).
     var replyStatus: String?
+    /// The session whose row has its reply line open.
+    var replyingTo: String?
     var hotKeyAllow = HotKeys.defaultAllow.display
     var hotKeyDeny = HotKeys.defaultDeny.display
 
@@ -199,7 +201,8 @@ final class Island {
     var expandedHeight: CGFloat {
         if cardSession != nil { return notchSize.height + 18 + cardHeight + 18 }
         let rows = claude.sessions.count
-        let strip: CGFloat = rows > 0 ? CGFloat(rows) * Self.rowHeight + 8 : 0
+        let replyLine: CGFloat = replyingTo != nil && claude.sessions.contains(where: { $0.id == replyingTo }) ? Self.replyRow : 0
+        let strip: CGFloat = rows > 0 ? CGFloat(rows) * Self.rowHeight + replyLine + 8 : 0
         let tiles: CGFloat = visibleTiles.isEmpty ? 0 : 94 + 18
         return notchSize.height + 18 + strip + tiles + (visibleTiles.isEmpty ? 10 : 0)
     }

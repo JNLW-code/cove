@@ -9,14 +9,19 @@ struct ClaudeStrip: View {
         let p = island.palette
         VStack(spacing: 0) {
             ForEach(island.claude.sessions) { session in
-                SessionRow(session: session, island: island)
+                SessionRow(session: session, island: island, actions: actions)
                     .contentShape(Rectangle())
                     .onTapGesture { actions.rowClicked(session) }
                     .overlay(alignment: .bottom) {
-                        if session.id != island.claude.sessions.last?.id {
+                        if session.id != island.claude.sessions.last?.id || island.replyingTo == session.id {
                             Rectangle().fill(p.rim).frame(height: 1)
                         }
                     }
+                if island.replyingTo == session.id {
+                    ReplyLine(session: session, island: island, actions: actions, autoFocus: true)
+                        .padding(.horizontal, 14)
+                        .frame(height: Island.replyRow)
+                }
             }
         }
         .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(p.tile))
@@ -28,6 +33,7 @@ struct ClaudeStrip: View {
 struct SessionRow: View {
     var session: ClaudeSession
     var island: Island
+    let actions: IslandActions
 
     var body: some View {
         if ages, !island.reduceMotion {
@@ -67,6 +73,15 @@ struct SessionRow: View {
                     .foregroundStyle(percent >= 90 ? p.blocked : percent >= 80 ? p.needsYou : p.tertiaryLabel)
                     .frame(width: 34, alignment: .trailing)
             }
+            Button { actions.toggleReply(for: session) } label: {
+                Image(systemName: "arrowshape.turn.up.left")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(island.replyingTo == session.id ? p.label : p.tertiaryLabel)
+                    .frame(width: 22, height: 22)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(island.replyingTo == session.id ? p.quaternaryLabel : .clear))
+            }
+            .buttonStyle(PressStyle())
+            .help("Reply to this session")
         }
         .padding(.horizontal, 14)
         .frame(height: Island.rowHeight)
@@ -154,8 +169,6 @@ struct ClaudeCard: View {
     var session: ClaudeSession
     var island: Island
     let actions: IslandActions
-    @State private var reply = ""
-    @FocusState private var replyFocused: Bool
 
     var body: some View {
         if let card = island.claude.frontCard {
@@ -188,7 +201,7 @@ struct ClaudeCard: View {
                     }
                     Text(subtitle).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1)
                     Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
-                    if isDone { replyField(p) }
+                    if isDone { ReplyLine(session: session, island: island, actions: actions, autoFocus: false).frame(height: Island.replyRow - 8).padding(.top, 2) }
                 }
                 .padding(.leading, 20)
                 .padding(.vertical, (message == nil && !isDone) ? 0 : 18)
@@ -221,39 +234,6 @@ struct ClaudeCard: View {
         return false
     }
 
-    /// One line to type a reply; Return sends it. Claude gets it as its next instruction.
-    private func replyField(_ p: Palette) -> some View {
-        HStack(spacing: 8) {
-            TextField("Reply to Claude…", text: $reply)
-                .textFieldStyle(.plain)
-                .font(Theme.font(12.5))
-                .foregroundStyle(p.label)
-                .focused($replyFocused)
-                .onSubmit(send)
-                .padding(.horizontal, 10)
-                .frame(height: 28)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(replyFocused ? p.accent : p.rim, lineWidth: 1))
-            Button(action: send) {
-                Image(systemName: "arrow.up").font(.system(size: 11, weight: .bold)).foregroundStyle(p.allowText)
-                    .frame(width: 28, height: 28).background(Circle().fill(p.allowBackground))
-            }
-            .buttonStyle(PressStyle())
-            .disabled(reply.trimmingCharacters(in: .whitespaces).isEmpty)
-            .opacity(reply.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
-            if let status = island.replyStatus {
-                Text(status).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
-            }
-        }
-        .frame(height: Island.replyRow - 8)
-        .padding(.top, 2)
-    }
-
-    private func send() {
-        let text = reply
-        reply = ""
-        actions.reply(text, to: session)
-    }
 
     /// Claude's last words, shown on the Done card so you can read the reply without opening the app.
     private var messageToShow: String? {
@@ -378,5 +358,48 @@ struct PermissionCardView: View {
         .buttonStyle(PressStyle())
         .disabled(!on)
         .opacity(on ? 1 : 0.35)
+    }
+}
+
+/// One line to type a reply; Return or the arrow sends it. Claude gets it as its next instruction.
+struct ReplyLine: View {
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+    var autoFocus: Bool
+    @State private var reply = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let p = island.palette
+        HStack(spacing: 8) {
+            TextField("Reply to Claude…", text: $reply)
+                .textFieldStyle(.plain)
+                .font(Theme.font(12.5))
+                .foregroundStyle(p.label)
+                .focused($focused)
+                .onSubmit(send)
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(focused ? p.accent : p.rim, lineWidth: 1))
+            Button(action: send) {
+                Image(systemName: "arrow.up").font(.system(size: 11, weight: .bold)).foregroundStyle(p.allowText)
+                    .frame(width: 28, height: 28).background(Circle().fill(p.allowBackground))
+            }
+            .buttonStyle(PressStyle())
+            .disabled(reply.trimmingCharacters(in: .whitespaces).isEmpty)
+            .opacity(reply.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
+            if let status = island.replyStatus {
+                Text(status).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+            }
+        }
+        .onAppear { if autoFocus { focused = true } }
+    }
+
+    private func send() {
+        let text = reply
+        reply = ""
+        actions.reply(text, to: session)
     }
 }

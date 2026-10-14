@@ -13,6 +13,7 @@ final class IslandActions {
     func open(_ app: RecentApps.Entry) { controller?.island.recentApps.open(app) }
     func rowClicked(_ session: ClaudeSession) { controller?.rowClicked(session) }
     func reply(_ text: String, to session: ClaudeSession) { controller?.sendReply(text, to: session) }
+    func toggleReply(for session: ClaudeSession) { controller?.toggleReply(for: session) }
     func answer(_ card: PermissionCard, allow: Bool) { controller?.answer(card, allow: allow) }
     func spotify(_ command: SpotifyCommand) { controller?.spotify(command) }
 }
