@@ -229,7 +229,7 @@ final class IslandController: NSObject {
                 if let previous, previous != NSRunningApplication.current, previous.bundleIdentifier != Typist.claudeBundle,
                    let url = previous.bundleURL {
                     try? await Task.sleep(for: .milliseconds(400))
-                    NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                    NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
                 }
             }
         }
