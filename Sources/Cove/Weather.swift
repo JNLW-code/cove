@@ -49,7 +49,9 @@ final class WeatherModel {
             guard let self, !Task.isCancelled else { return }
             await self.refresh()
             guard !Task.isCancelled else { return }
-            self.scheduleRefresh(after: Self.refreshEvery)
+            // A failed fetch (no network yet, city not found) retries after a minute, not half an hour.
+            let gotData = Date().timeIntervalSince(self.fetchedAt) < 60
+            self.scheduleRefresh(after: gotData ? Self.refreshEvery : 60)
         }
     }
 
