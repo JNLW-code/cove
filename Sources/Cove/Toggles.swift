@@ -41,6 +41,7 @@ final class QuickToggles {
         NSAppleScript(source: source)?.executeAndReturnError(&error)
         if let error {
             Log.app.error("Dark mode toggle failed: \(String(describing: error[NSAppleScript.errorBriefMessage] ?? ""), privacy: .public)")
+            return   // nothing changed, so the button keeps its state
         }
         darkMode.toggle()
     }

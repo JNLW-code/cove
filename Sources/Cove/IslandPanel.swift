@@ -57,6 +57,8 @@ final class IslandController: NSObject {
     private var hotCornerArmed = true
     /// The app that had the keyboard when the Launchpad opened; it gets it back when the Launchpad closes.
     private var launchpadPrevious: NSRunningApplication?
+    /// Set by an outside click: the click itself picks the next app, so nothing is handed back.
+    private var closingByClick = false
     private var swipeTurned = false
     private var peekSources: PeekSources?
     private var focusWatcher: FocusWatcher?
@@ -230,6 +232,7 @@ final class IslandController: NSObject {
             island.volume.refresh()
             island.brightness.refresh()
             island.spotifyModel.islandOpened()
+            island.musicModel.visible = true
             island.musicModel.islandOpened()
             island.weatherModel.islandOpened()
         }
@@ -305,8 +308,10 @@ final class IslandController: NSObject {
     /// Hot corner (top-left of the notch screen) opens the Launchpad; it re-arms once the mouse has left the corner.
     func setHotCorner(_ on: Bool) {
         if on, hotCornerMonitor == nil {
+            // Global monitor handlers run on the main thread; no hop, no allocation per mouse move.
             hotCornerMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { _ in
-                Task { @MainActor in IslandController.shared?.mouseMovedForCorner() }
+                if Thread.isMainThread { MainActor.assumeIsolated { IslandController.shared?.mouseMovedForCorner() } }
+                else { Task { @MainActor in IslandController.shared?.mouseMovedForCorner() } }
             }
         } else if !on, let monitor = hotCornerMonitor {
             NSEvent.removeMonitor(monitor)
@@ -383,9 +388,7 @@ final class IslandController: NSObject {
             Log.app.notice("Reply delivered through the Stop hook")
             island.replyStatus = "Sent"
             collapse()
-            if let previous, previous != NSRunningApplication.current, let url = previous.bundleURL {
-                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
-            }
+            Self.handBack(to: previous)
             return
         }
         island.replyStatus = "Typing it into the app…"
@@ -403,10 +406,9 @@ final class IslandController: NSObject {
                 session.doneSeen = true
                 self.island.claude.markDoneSeen()
                 // Hand the screen back to what James was doing.
-                if let previous, previous != NSRunningApplication.current, previous.bundleIdentifier != Typist.claudeBundle,
-                   let url = previous.bundleURL {
+                if let previous, previous.bundleIdentifier != Typist.claudeBundle {
                     try? await Task.sleep(for: .milliseconds(400))
-                    NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+                    Self.handBack(to: previous)
                 }
             }
         }
@@ -446,15 +448,22 @@ final class IslandController: NSObject {
         }
     }
 
-    /// Leaving the Launchpad for any other mode: drop its monitors and hand the keyboard back.
+    /// Leaving the Launchpad for any other mode: drop its monitors and hand the keyboard back, unless a click
+    /// on another app closed it (that click picks the next app).
     private func leaveLaunchpad() {
         removeLaunchpadMonitors()
+        island.musicModel.visible = false
         island.launchpadQuery = ""
         panel.makeFirstResponder(nil)
-        if let previous = launchpadPrevious, previous != NSRunningApplication.current, let url = previous.bundleURL {
-            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
-        }
+        if !closingByClick { Self.handBack(to: launchpadPrevious) }
         launchpadPrevious = nil
+    }
+
+    /// Makes `previous` the key app again (Cove, non-activating, can hold the keyboard while that app stays in front).
+    /// Nothing happens for Cove itself or for an app that has quit since: launching it again would be a surprise.
+    static func handBack(to previous: NSRunningApplication?) {
+        guard let previous, previous != NSRunningApplication.current, !previous.isTerminated, let url = previous.bundleURL else { return }
+        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 
     /// `byHover` is a real mouse-over; only then may a first-time permission prompt (Calendar) appear.
@@ -542,7 +551,9 @@ final class IslandController: NSObject {
 
     private func outsideClick() {
         guard island.pinned, !panel.frame.contains(NSEvent.mouseLocation) else { return }
+        closingByClick = true
         collapse()
+        closingByClick = false
     }
 
     func toggleEdit() {

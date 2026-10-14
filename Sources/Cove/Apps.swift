@@ -62,7 +62,8 @@ final class AppCatalog {
     private(set) var apps: [AppEntry] = []
     private(set) var scanned = false
     private var icons: [String: NSImage] = [:]
-    private var loading: Set<String> = []
+    /// Not observed: views mutate it from inside their own body (icon(for:)), which observed state must not do.
+    @ObservationIgnored private var loading: Set<String> = []
     private var watchers: [DispatchSourceFileSystemObject] = []
     private var rescanTask: Task<Void, Never>?
 
@@ -103,7 +104,8 @@ final class AppCatalog {
                 let url = raw.resolvingSymlinksInPath()
                 guard let bundle = Bundle(url: url), let info = bundle.infoDictionary, !info.isEmpty else { continue }
                 if (info["LSBackgroundOnly"] as? Bool) == true || (info["LSBackgroundOnly"] as? String) == "1" { continue }
-                let display = fm.displayName(atPath: raw.path).replacingOccurrences(of: ".app", with: "")
+                var display = fm.displayName(atPath: raw.path)
+                if display.hasSuffix(".app") { display.removeLast(4) }
                 if isHelper(display) { continue }
                 let bundleID = bundle.bundleIdentifier
                 let key = bundleID ?? display.lowercased()

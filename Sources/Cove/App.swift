@@ -194,8 +194,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Cove is a menu-bar app: after one of its alerts, hand the keyboard back to the app that had it.
     private func giveFocusBack(to previous: NSRunningApplication?) {
-        guard let previous, previous != NSRunningApplication.current, let url = previous.bundleURL else { return }
-        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        IslandController.handBack(to: previous)
     }
 
     @objc private func togglePeekApp(_ sender: NSMenuItem) {

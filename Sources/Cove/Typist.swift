@@ -58,13 +58,12 @@ enum Typist {
         }
         if !typed {
             let pasteboard = NSPasteboard.general
-            let saved = pasteboard.string(forType: .string)
+            let saved = snapshot(pasteboard)
             pasteboard.clearContents()
             pasteboard.setString(text, forType: .string)
             press(keyCode: 9, flags: .maskCommand)   // ⌘V
             try? await Task.sleep(for: .milliseconds(300))
-            pasteboard.clearContents()
-            if let saved { pasteboard.setString(saved, forType: .string) }
+            restore(saved, to: pasteboard)
         }
         press(keyCode: 36, flags: [])                // Return sends
         Log.app.notice("Typist: composer \(composer.map(describe) ?? "clicked", privacy: .public), via \(typed ? "AXValue" : "paste", privacy: .public)")
@@ -161,6 +160,25 @@ enum Typist {
         AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
         AXUIElementCopyAttributeValue(element, "AXPlaceholderValue" as CFString, &placeholder)
         return "\(role as? String ?? "?") '\(placeholder as? String ?? "")'"
+    }
+
+    /// Every item and type on the clipboard (an image, files, rich text…), so the paste leaves it as it was.
+    private static func snapshot(_ pasteboard: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
+        (pasteboard.pasteboardItems ?? []).map { item in
+            var types: [NSPasteboard.PasteboardType: Data] = [:]
+            for type in item.types { if let data = item.data(forType: type) { types[type] = data } }
+            return types
+        }
+    }
+
+    private static func restore(_ items: [[NSPasteboard.PasteboardType: Data]], to pasteboard: NSPasteboard) {
+        pasteboard.clearContents()
+        let restored = items.map { types in
+            let item = NSPasteboardItem()
+            for (type, data) in types { item.setData(data, forType: type) }
+            return item
+        }
+        if !restored.isEmpty { pasteboard.writeObjects(restored) }
     }
 
     private static func press(keyCode: CGKeyCode, flags: CGEventFlags) {

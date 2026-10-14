@@ -18,7 +18,7 @@ struct ClaudeStrip: View {
                         if session.note != nil { Button("Clear the note") { actions.setNote(nil, for: session) } }
                     }
                     .overlay(alignment: .bottom) {
-                        if session.id != island.claude.sessions.last?.id || island.replyingTo == session.id || island.notingFor == session.id {
+                        if session.id != island.claude.active.last?.id || island.replyingTo == session.id || island.notingFor == session.id {
                             Rectangle().fill(p.rim).frame(height: 1)
                         }
                     }

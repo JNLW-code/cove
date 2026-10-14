@@ -16,6 +16,8 @@ final class MusicModel: NSObject {
     private var updatedAt = Date()
     private var artwork: [String: NSImage] = [:]
     var onChange: (() -> Void)?
+    /// True while the Launchpad shows the Now playing widget: only then does a track change ask Music for details.
+    var visible = false
 
     override init() {
         super.init()
@@ -48,7 +50,7 @@ final class MusicModel: NSObject {
         current.progress = progress
         track = current
         onChange?()
-        if changed, Self.isRunning { fetchPositionAndArtwork() }
+        if changed, visible, Self.isRunning { fetchPositionAndArtwork() }
     }
 
     @objc private func appTerminated(_ note: Notification) {

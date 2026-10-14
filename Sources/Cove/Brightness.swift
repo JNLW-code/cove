@@ -19,14 +19,15 @@ final class Brightness {
 
     private var keyboardClient: NSObject?
     private var keyboardID: UInt64 = 0
+    private var loaded = false
 
-    init() {
-        loadDisplayServices()
-        loadKeyboardClient()
-        refresh()
-    }
-
+    /// Loads the two frameworks on the first refresh (the Launchpad opening), not at app launch.
     func refresh() {
+        if !loaded {
+            loaded = true
+            loadDisplayServices()
+            loadKeyboardClient()
+        }
         if let getDisplay {
             var value: Float = 0
             if getDisplay(CGMainDisplayID(), &value) == 0 { display = value; displayAvailable = true } else { displayAvailable = false }
