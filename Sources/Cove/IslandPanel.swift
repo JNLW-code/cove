@@ -225,6 +225,12 @@ final class IslandController: NSObject {
                 session.lastMessage = nil
                 session.doneSeen = true
                 self.island.claude.markDoneSeen()
+                // Hand the screen back to what James was doing.
+                if let previous, previous != NSRunningApplication.current, previous.bundleIdentifier != Typist.claudeBundle,
+                   let url = previous.bundleURL {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                }
             }
         }
     }
