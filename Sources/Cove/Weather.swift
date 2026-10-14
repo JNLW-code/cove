@@ -65,14 +65,20 @@ final class WeatherModel {
             .init(name: "daily", value: "temperature_2m_max,temperature_2m_min"),
             .init(name: "forecast_days", value: "1"), .init(name: "timezone", value: "auto"),
         ]
-        guard let url = components.url, let (data, response) = try? await URLSession.shared.data(from: url),
-              (response as? HTTPURLResponse)?.statusCode == 200,
+        guard let url = components.url else { return }
+        let result: (Data, URLResponse)
+        do { result = try await URLSession.shared.data(from: url) } catch {
+            Log.app.error("Weather refresh failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        let (data, response) = result
+        guard (response as? HTTPURLResponse)?.statusCode == 200,
               let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let current = json["current"] as? [String: Any], let daily = json["daily"] as? [String: Any],
               let temp = current["temperature_2m"] as? Double, let code = current["weather_code"] as? Int,
               let highs = daily["temperature_2m_max"] as? [Double], let lows = daily["temperature_2m_min"] as? [Double],
               let high = highs.first, let low = lows.first else {
-            Log.app.error("Weather refresh failed")
+            Log.app.error("Weather refresh failed: HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")
             return
         }
         let day = (current["is_day"] as? Int ?? 1) == 1
@@ -85,8 +91,14 @@ final class WeatherModel {
     private func geocode() async {
         var components = URLComponents(string: "https://geocoding-api.open-meteo.com/v1/search")!
         components.queryItems = [.init(name: "name", value: city), .init(name: "count", value: "1"), .init(name: "language", value: "en")]
-        guard let url = components.url, let (data, response) = try? await URLSession.shared.data(from: url),
-              (response as? HTTPURLResponse)?.statusCode == 200,
+        guard let url = components.url else { return }
+        let result: (Data, URLResponse)
+        do { result = try await URLSession.shared.data(from: url) } catch {
+            Log.app.error("Weather refresh failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        let (data, response) = result
+        guard (response as? HTTPURLResponse)?.statusCode == 200,
               let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let first = (json["results"] as? [[String: Any]])?.first,
               let lat = first["latitude"] as? Double, let lon = first["longitude"] as? Double else {
