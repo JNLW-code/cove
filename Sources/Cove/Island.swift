@@ -177,11 +177,20 @@ final class Island {
     static let rowHeight: CGFloat = 28
     static let cardHeight: CGFloat = 111
 
-    /// The session whose card takes over the island: needs you, or a Done not yet seen.
+    /// Which of the sessions needing you the card shows (‹ › move it).
+    var cardIndex = 0
+
+    /// The session whose card sits at the top: the chosen one of those needing you.
     var cardSession: ClaudeSession? {
-        if let card = claude.frontCard, let s = claude.session(card.sessionID) { return s }
-        guard let s = claude.mostUrgent else { return nil }
-        return s.needsYou != nil || s.unseenDone ? s : nil
+        let queue = claude.attentionQueue
+        guard !queue.isEmpty else { return nil }
+        return queue[min(cardIndex, queue.count - 1)]
+    }
+
+    /// The permission card on screen, if the shown session has one. Allow/Deny and the shortcuts act on this one.
+    var displayedCard: PermissionCard? {
+        guard let s = cardSession else { return nil }
+        return claude.card(for: s)
     }
 
     static let longCommandBox: CGFloat = 128
@@ -193,16 +202,17 @@ final class Island {
     }
 
     var cardHeight: CGFloat {
-        if let card = claude.frontCard, Self.isLong(card.command) { return Self.cardHeight + Self.longCommandBox }
-        if claude.frontCard == nil, let s = cardSession, case .done = s.state { return Self.cardHeight + (s.lastMessage != nil ? Self.longCommandBox : 0) + Self.replyRow }
+        if let card = displayedCard { return Self.cardHeight + (Self.isLong(card.command) ? Self.longCommandBox : 0) }
+        if let s = cardSession, case .done = s.state { return Self.cardHeight + (s.lastMessage != nil ? Self.longCommandBox : 0) + Self.replyRow }
         return Self.cardHeight
     }
 
+    /// Card on top (when something needs you) and the rows under it; tiles only when nothing needs you.
     var expandedHeight: CGFloat {
-        if cardSession != nil { return notchSize.height + 18 + cardHeight + 18 }
         let rows = claude.sessions.count
         let replyLine: CGFloat = replyingTo != nil && claude.sessions.contains(where: { $0.id == replyingTo }) ? Self.replyRow : 0
         let strip: CGFloat = rows > 0 ? CGFloat(rows) * Self.rowHeight + replyLine + 8 : 0
+        if cardSession != nil { return notchSize.height + 18 + cardHeight + 8 + strip + 10 }
         let tiles: CGFloat = visibleTiles.isEmpty ? 0 : 94 + 18
         return notchSize.height + 18 + strip + tiles + (visibleTiles.isEmpty ? 10 : 0)
     }

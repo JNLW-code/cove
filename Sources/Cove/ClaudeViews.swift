@@ -8,7 +8,7 @@ struct ClaudeStrip: View {
     var body: some View {
         let p = island.palette
         VStack(spacing: 0) {
-            ForEach(island.claude.sessions) { session in
+            ForEach(island.claude.active) { session in
                 SessionRow(session: session, island: island, actions: actions)
                     .contentShape(Rectangle())
                     .onTapGesture { actions.rowClicked(session) }
@@ -54,6 +54,10 @@ struct SessionRow: View {
     private var row: some View {
         let p = island.palette
         return HStack(spacing: 10) {
+            if let n = island.claude.attentionQueue.firstIndex(where: { $0.id == session.id }) {
+                Text("\(n + 1)").font(Theme.digits(10, .bold)).foregroundStyle(p.allowText)
+                    .frame(width: 16, height: 16).background(Circle().fill(p.needsYou))
+            }
             leading(p)
             Text(session.label).font(Theme.font(12, .semibold)).foregroundStyle(p.label)
                 .lineLimit(1).truncationMode(.middle).layoutPriority(1)
@@ -171,11 +175,35 @@ struct ClaudeCard: View {
     let actions: IslandActions
 
     var body: some View {
-        if let card = island.claude.frontCard {
-            PermissionCardView(card: card, session: session, island: island, actions: actions)
-        } else {
-            statusCard
+        ZStack(alignment: .topTrailing) {
+            if let card = island.displayedCard {
+                PermissionCardView(card: card, session: session, island: island, actions: actions)
+            } else {
+                statusCard
+            }
+            HStack(spacing: 6) {
+                if island.claude.attentionQueue.count > 1 {
+                    let p = island.palette
+                    Text("\(min(island.cardIndex, island.claude.attentionQueue.count - 1) + 1) of \(island.claude.attentionQueue.count)")
+                        .font(Theme.digits(11)).foregroundStyle(p.tertiaryLabel)
+                    smallButton("chevron.left") { actions.stepCard(-1) }
+                    smallButton("chevron.right") { actions.stepCard(1) }
+                }
+                if island.displayedCard == nil {
+                    smallButton("xmark") { actions.dismissCard(session) }
+                }
+            }
+            .padding(.top, 10).padding(.trailing, 12)
         }
+    }
+
+    private func smallButton(_ symbol: String, action: @escaping () -> Void) -> some View {
+        let p = island.palette
+        return Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 9, weight: .bold)).foregroundStyle(p.secondaryLabel)
+                .frame(width: 20, height: 20).background(Circle().fill(p.quaternaryLabel))
+        }
+        .buttonStyle(PressStyle())
     }
 
     private var statusCard: some View {
@@ -302,9 +330,6 @@ struct PermissionCardView: View {
                 VStack(alignment: .leading, spacing: long ? 6 : 4) {
                     HStack(spacing: 8) {
                         Text("Claude needs your OK").font(Theme.font(14, .bold)).foregroundStyle(p.label)
-                        if island.claude.cards.count > 1 {
-                            Text("1 of \(island.claude.cards.count)").font(Theme.font(11)).foregroundStyle(p.tertiaryLabel)
-                        }
                     }
                     if long {
                         ScrollView(.vertical) {

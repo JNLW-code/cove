@@ -14,6 +14,8 @@ final class IslandActions {
     func rowClicked(_ session: ClaudeSession) { controller?.rowClicked(session) }
     func reply(_ text: String, to session: ClaudeSession) { controller?.sendReply(text, to: session) }
     func toggleReply(for session: ClaudeSession) { controller?.toggleReply(for: session) }
+    func dismissCard(_ session: ClaudeSession) { controller?.dismissCard(session) }
+    func stepCard(_ delta: Int) { controller?.stepCard(delta) }
     func answer(_ card: PermissionCard, allow: Bool) { controller?.answer(card, allow: allow) }
     func spotify(_ command: SpotifyCommand) { controller?.spotify(command) }
 }
@@ -243,8 +245,13 @@ struct ExpandedIsland: View {
                 .onTapGesture { actions.togglePin() }
             ToolbarRow(island: island, actions: actions)
             if let session = island.cardSession {
-                ClaudeCard(session: session, island: island, actions: actions)
-                    .padding(.top, island.notchSize.height + 18)
+                VStack(spacing: 8) {
+                    ClaudeCard(session: session, island: island, actions: actions)
+                    if !island.claude.sessions.isEmpty {
+                        ClaudeStrip(island: island, actions: actions)
+                    }
+                }
+                .padding(.top, island.notchSize.height + 18)
             } else {
                 VStack(spacing: 8) {
                     if !island.claude.sessions.isEmpty {

@@ -1,0 +1,75 @@
+<title>Cove Card Layout</title>
+<style>
+/* Two ways the island can show a card without locking you out. Real size: 1 px = 1 pt. */
+:root{--bg:#F2F2F5;--fg:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.1);--pick:#0A7AFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#141416;--fg:#f2f2f4;--muted:#9a9aa0;--line:rgba(255,255,255,.12);color-scheme:dark}}
+:root[data-theme=dark]{--bg:#141416;--fg:#f2f2f4;--muted:#9a9aa0;--line:rgba(255,255,255,.12);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,"SF Pro Text",system-ui,sans-serif;margin:0}
+.wrap{padding-block:0 48px;padding-inline:16px;max-width:1100px;margin:0 auto}
+h1{font-size:22px;margin:18px 0 4px}h2{font-size:16px;margin:26px 0 4px;display:flex;gap:8px;align-items:center}
+.sub{color:var(--muted);margin:0 0 14px;max-width:64ch}.cap{color:var(--muted);font-size:12.5px;margin:6px 0 0;max-width:70ch}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--pick);border:1px solid var(--pick);border-radius:999px;padding:1px 7px}
+.fit{overflow-x:auto;border-radius:12px;background:#2B2F3D}.fitin{position:relative;margin:0 auto}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0;background:#2B2F3D;overflow:hidden;font:13px/1.2 -apple-system,"SF Pro Text",system-ui,sans-serif}
+.menubar{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(16,18,26,.7)}
+.notch{position:absolute;top:0;left:50%;width:179px;height:32px;margin-left:-89.5px;background:#000}
+.cove{--island:#282828;--tile:#383838;--rim:rgba(255,255,255,.1);--l1:rgba(255,255,255,.85);--l2:rgba(255,255,255,.55);--l3:rgba(255,255,255,.25);--l4:rgba(255,255,255,.1);--accent:#007AFF;--orange:#FF9230;--green:#30D158;--allow-bg:#fff;--allow-fg:#1E1E1E;--deny:#4A4A4A}
+.island{position:absolute;top:0;left:50%;width:662px;margin-left:-331px;background:var(--island);border-radius:35px;box-shadow:inset 0 0 0 1px var(--rim),0 10px 28px rgba(0,0,0,.35);color:var(--l1)}
+.island::before{content:"";position:absolute;top:0;left:50%;width:179px;height:32px;margin-left:-89.5px;background:#000;border-radius:0 0 7px 7px}
+.tb{position:absolute;top:0;height:32px;display:flex;align-items:center;gap:8px}.tb.l{left:24px}.tb.r{right:24px}
+.tbi{width:22px;height:22px;border-radius:6px;color:var(--l2);display:grid;place-items:center;font-size:13px}
+.appi{width:16px;height:16px;border-radius:4px}
+.col{position:absolute;left:23px;right:23px;top:50px;display:flex;flex-direction:column;gap:8px}
+.card{position:relative;background:var(--tile);border-radius:15px;height:111px;box-shadow:inset 0 0 0 1px var(--orange)}
+.card .g{position:absolute;left:20px;top:50%;margin-top:-16px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1.75px;width:32px;height:32px}.grid i{display:block;background:var(--l4);border-radius:1px}.grid i.on{background:var(--orange)}
+.grid.s16{width:16px;height:16px;gap:1px}.grid.s16 i.on{background:var(--accent)}
+.txt{position:absolute;left:72px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.ttl{font-size:14px;font-weight:700}.sub2{font-size:12.5px;color:var(--l2)}.prj{font-size:11px;color:var(--l3)}
+.btns{position:absolute;right:20px;top:0;bottom:0;display:flex;align-items:center;gap:8px}
+.pill{height:30px;width:85px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:600;background:var(--allow-bg);color:var(--allow-fg)}
+.pill.grey{background:var(--deny);color:var(--l1);width:auto;padding:0 12px}
+.x{position:absolute;right:14px;top:12px;width:20px;height:20px;border-radius:10px;background:var(--l4);color:var(--l2);display:grid;place-items:center;font-size:11px;font-weight:700}
+.nav{position:absolute;right:120px;top:50%;margin-top:-10px;display:flex;gap:4px;align-items:center;font-size:11px;color:var(--l3)}
+.nav b{width:20px;height:20px;border-radius:10px;background:var(--l4);color:var(--l2);display:grid;place-items:center;font-weight:700}
+.strip{background:var(--tile);border-radius:15px;overflow:hidden}
+.row{height:28px;display:flex;align-items:center;gap:10px;padding:0 14px;box-shadow:inset 0 -1px 0 var(--rim);font-size:12px}
+.row:last-child{box-shadow:none}.row .p{font-weight:600}.row .s{color:var(--l2)}.row .t{margin-left:auto;color:var(--l2);font-variant-numeric:tabular-nums}.row .pc{color:var(--l3);width:34px;text-align:right;font-variant-numeric:tabular-nums}.row .r{color:var(--l3)}
+.row.hot .s{color:var(--orange)}
+.tiles{display:flex;gap:8px;justify-content:center}.tile{height:94px;border-radius:15px;background:var(--tile);width:170px}.tile.w81{width:81px}
+.back{position:absolute;left:23px;top:50px;height:22px;display:flex;align-items:center;gap:4px;font-size:12px;color:var(--l2)}
+.banner{background:var(--tile);border-radius:15px;height:28px;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:12px;box-shadow:inset 0 0 0 1px var(--orange)}
+.banner .s{color:var(--orange);font-weight:600}.banner .arrow{margin-left:auto;color:var(--l2)}
+</style>
+<div class="wrap">
+<h1>Card layout</h1>
+<p class="sub">How the island shows something that needs you without locking you out of the other sessions. Dark theme, real size.</p>
+<div class="cove" id="scenes"></div>
+</div>
+<script>
+(function(){
+const cells=(lit)=>{let s='';for(let i=0;i<25;i++)s+=`<i class="${lit.includes(i)?'on':''}"></i>`;return s};
+const tb=`<div class="tb l"><div class="tbi">⚙</div><div class="tbi">✓</div><div class="tbi">🔈</div><div class="tbi">◐</div></div><div class="tb r"><div class="appi" style="background:#D97757"></div><div class="appi" style="background:#4285F4"></div><div class="appi" style="background:#1575F9"></div><div class="appi" style="background:#222"></div></div>`;
+const rows=(hot)=>`<div class="strip">
+ <div class="row ${hot?'hot':''}"><div class="grid s16">${cells([3,4,7])}</div><span class="p">quoteflow-v3 · main</span><span class="s">▤ Plan ready</span><span class="t"></span><span class="pc">41%</span><span class="r">↩</span></div>
+ <div class="row"><div class="grid s16">${cells([6,7,12])}</div><span class="p">quoteflow-v3 · rec-fix</span><span class="s">✎ Editing</span><span class="t">4:12</span><span class="pc">66%</span><span class="r">↩</span></div>
+ <div class="row"><div class="grid s16">${cells([])}</div><span class="p">notch-island · main</span><span class="s">◷ Waiting · 3m</span><span class="t"></span><span class="pc">12%</span><span class="r">↩</span></div></div>`;
+const tiles=`<div class="tiles"><div class="tile"></div><div class="tile w81"></div><div class="tile"></div></div>`;
+const card=(withX,nav)=>`<div class="card"><div class="g"><div class="grid">${cells([3,4,7])}</div></div><div class="txt"><div class="ttl">Claude's plan is ready ${nav?'<span style="font-size:11px;font-weight:500;color:var(--l3)">1 of 2</span>':''}</div><div class="sub2">Answer it in the app</div><div class="prj">quoteflow-v3 · main</div></div>${nav?'<div class="nav"><b>‹</b><b>›</b></div>':''}<div class="btns"><div class="pill">Open →</div></div>${withX?'<div class="x">×</div>':''}</div>`;
+function stage(h,inner,note){return `<div class="fit"><div class="fitin" style="width:720px;height:${h+34}px"><div class="stage" style="width:720px;height:${h+34}px" data-w="720" data-h="${h+34}"><div class="menubar"></div><div class="notch"></div><div class="island" style="height:${h}px">${tb}${inner}</div></div></div></div>${note?`<p class="cap">${note}</p>`:''}`}
+const hA=32+18+111+8+84+18;
+const hA2=hA+8+94;
+const hB=32+18+22+8+84+8+94+18;
+document.getElementById('scenes').innerHTML=`
+<h2>A · Card on top, rows underneath <span class="tag">my pick</span></h2>
+${stage(hA,`<div class="col">${card(true,true)}${rows(true)}</div>`,'The card stays until you act, but the other sessions are right there to click. × clears Done, question and plan cards. ‹ › move through several pending ones ("1 of 2"). Tiles hidden while a card is up (question 3: hide).')}
+<h2>A2 · Same, tiles kept</h2>
+${stage(hA2,`<div class="col">${card(true,true)}${rows(true)}${tiles}</div>`,'Question 3: show. Taller, but everything is there.')}
+<h2>B · Card only, with a Back button</h2>
+${stage(32+18+111+18,`<div class="col">${card(false,true)}</div><div style="position:absolute;left:28px;top:34px;font-size:11px;color:var(--l2)">‹ All sessions</div>`,'Your idea: the card takes over; "‹ All sessions" goes to the full view below.')}
+${stage(hB,`<div class="back">‹ Back to</div><div class="col" style="top:50px"><div class="banner"><span class="s">▤ Plan ready · quoteflow-v3</span><span class="arrow">›</span></div>${rows(false)}${tiles}</div>`,'The full view in B, with a one-line banner for the latest thing needing action. Click it to get the card back.')}`;
+function fit(){document.querySelectorAll('.fit').forEach(f=>{const st=f.querySelector('.stage'),fi=f.querySelector('.fitin');const w=+st.dataset.w,h=+st.dataset.h;const s=Math.min(1,(f.clientWidth||w)/w);st.style.transform=`scale(${s})`;fi.style.width=(w*s)+'px';fi.style.height=(h*s)+'px'})}
+new ResizeObserver(fit).observe(document.body);fit();
+})();
+</script>

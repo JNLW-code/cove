@@ -160,6 +160,7 @@ final class IslandController: NSObject {
 
     /// A card arrived or the front one changed: open the island on it, keep it open, arm the shortcuts.
     private func cardsChanged() {
+        island.cardIndex = 0
         if island.claude.frontCard != nil {
             hotKeys?.register()
             if island.mode != .expanded { show(.expanded, animation: Self.openAnimation, settle: 0.55); haptic() }
@@ -180,14 +181,30 @@ final class IslandController: NSObject {
     }
 
     private func answerFront(allow: Bool) {
-        guard let card = island.claude.frontCard else { return }
+        guard let card = island.displayedCard else { return }
         answer(card, allow: allow)
+    }
+
+    /// × on a card, or ‹ › between the sessions needing you.
+    func dismissCard(_ session: ClaudeSession) {
+        island.claude.dismiss(session)
+        island.cardIndex = 0
+        show(.expanded, animation: Self.switchAnimation)
+    }
+
+    func stepCard(_ delta: Int) {
+        let count = island.claude.attentionQueue.count
+        guard count > 1 else { return }
+        island.cardIndex = (island.cardIndex + delta + count) % count
+        island.claude.frontCardShownAt = Date()
+        island.claude.frontCardFullySeen = false
+        show(.expanded, animation: Self.switchAnimation)
     }
 
     /// Allow or Deny from a button or shortcut. Ignored for 400 ms after a card appears or moves on.
     func answer(_ card: PermissionCard, allow: Bool) {
-        guard !island.claude.frontCardGuarded, island.claude.frontCard?.id == card.id else { return }
-        if allow, !island.claude.frontCardAllowReady { return }
+        guard !island.claude.frontCardGuarded, island.displayedCard?.id == card.id else { return }
+        if allow, Island.isLong(card.command), !island.claude.frontCardFullySeen { return }
         haptic()
         island.claude.answer(card, allow: allow)
         let content = allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Allowed", second: nil)

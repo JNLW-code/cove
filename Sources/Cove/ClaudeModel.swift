@@ -116,6 +116,8 @@ final class ClaudeSession: Identifiable {
     var inFlight: [String: (step: ClaudeStep, start: Date)] = [:]
     var endsWithQuestion = false
     var doneSeen = false
+    /// A question / plan / asking-in-app card was dismissed with ×; the row still says so.
+    var attentionSeen = false
     var lastAnswered = Date.distantPast
     var pendingStep: ClaudeStep?
     var lastStepApplied = Date.distantPast
@@ -149,12 +151,16 @@ final class ClaudeSession: Identifiable {
     /// How urgent this session is for the compact pill. Higher wins.
     var urgency: Int {
         switch state {
-        case .needsYou: 3
+        case .needsYou(.permission): 3
+        case .needsYou: attentionSeen ? 1 : 3
         case .done: doneSeen ? 0 : 2
         case .working, .running: 1
         default: 0
         }
     }
+
+    /// Needs James right now (a card is shown for it).
+    var needsAttention: Bool { urgency >= 2 }
 }
 
 /// Formats "10 s", "4 m 12 s", "1 h 05 m".
@@ -295,14 +301,14 @@ final class ClaudeModel {
             case "permission_prompt":
                 // Claude Code sends this ~6 s after the request even when the island already answered it.
                 let justAnswered = Date().timeIntervalSince(s.lastAnswered) < 10
-                if s.needsYou == nil, !justAnswered, !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp) }
+                if s.needsYou == nil, !justAnswered, !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp); s.attentionSeen = false }
             default: break
             }
         case "PermissionRequest":
             guard let requestID = m.string("request_id") else { break }
             let tool = m.string("tool_name") ?? ""
-            if tool == "AskUserQuestion" { s.state = .needsYou(.question); break }
-            if tool == "ExitPlanMode" { s.state = .needsYou(.plan); break }
+            if tool == "AskUserQuestion" { s.state = .needsYou(.question); s.attentionSeen = false; break }
+            if tool == "ExitPlanMode" { s.state = .needsYou(.plan); s.attentionSeen = false; break }
             let command = Self.describe(tool: tool, inputJSON: m.string("tool_input"))
             cards.append(PermissionCard(id: requestID, sessionID: s.id, agentID: agent, tool: tool,
                                         inputKey: m.string("input_key"), command: command, received: Date()))
@@ -446,6 +452,18 @@ final class ClaudeModel {
         for s in sessions where s.unseenDone { s.doneSeen = true }
         onChanged?()
     }
+
+    /// × on a card: the Done or question is acknowledged; the row keeps its word.
+    func dismiss(_ s: ClaudeSession) {
+        if s.unseenDone { s.doneSeen = true }
+        if s.needsYou != nil, s.needsYou != .permission { s.attentionSeen = true }
+        onChanged?()
+    }
+
+    /// Sessions that need James, most urgent first: this is the numbering on the rows and the ‹ › order.
+    var attentionQueue: [ClaudeSession] { active.filter { $0.needsAttention } }
+
+    func card(for s: ClaudeSession) -> PermissionCard? { cards.first { $0.sessionID == s.id } }
 
     /// Demo only: replaces the sessions with sample rows.
     func setDemoSessions(_ demo: [ClaudeSession]) {
