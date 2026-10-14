@@ -130,6 +130,8 @@ in `~/Library/Application Support/Cove/`. PermissionRequest keeps its connection
 - Context % on each row (14 Oct): the helper reads GSD's `claude-ctx-<session>.json` when it exists (Terminal), else the last `usage` block in the transcript's tail (input + cache tokens), on Stop and UserPromptSubmit. The app divides by 1,000,000 when `~/.claude/settings.json` has a `[1m]` model (or the count is already past 200k), else 200,000. Amber at 80 %, red at 90 %.
 - Tiles are centred when fewer than four show.
 
+- Layout A (James, 14 Oct): when something needs him, the card sits on top with the session rows under it (tiles hidden); rows are in urgency order and the ones needing him carry amber numbers 1, 2, 3; the card shows "n of N" with ‹ › and a × to dismiss Done / question / plan cards (permission cards only go by Allow / Deny). Reply arrow on every row.
+
 ## Later
 - Chips row from ref 5: YouTube, Window, Messages, Clipboard, Tray, Recents, Mac.
 - Do Not Disturb peek. Options for James to pick: (a) watch `~/Library/DoNotDisturb/DB/Assertions.json` with a DispatchSource (no polling) — needs Full Disk Access for Cove; (b) a paid Apple team to use INFocusStatusCenter; (c) leave it out.
