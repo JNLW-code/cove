@@ -33,6 +33,20 @@ Then add the entries from [hooks/settings-snippet.json](hooks/settings-snippet.j
 - Themes: Dark, Light, Follow macOS, and Glass (Apple's Liquid Glass, like Control Centre). The ◐ button cycles Dark → Light → Glass.
 - Menu: Theme, Tiles, Weather City, Peeks (which apps, sound), Allow / Deny Shortcuts, Launchpad (open, shortcut, hot corner), Permissions (ticks), Launch at Login, Demo, Quit.
 
+## Install from the DMG (no Xcode needed)
+
+Download `Cove.dmg` from the [latest release](https://github.com/JNLW-code/cove/releases/latest) and follow the `Read Me.txt` inside it: drag Cove to Applications, allow it once under System Settings → Privacy & Security ("Open Anyway", because it is signed with a self-signed certificate rather than an Apple Developer ID), double-click `Install Hooks.command` (right-click → Open if macOS refuses it), then paste `Hooks/settings-snippet.json` into the `"hooks"` object of `~/.claude/settings.json`. Needs a MacBook with a notch, Apple silicon, macOS 26 or later and Claude Code 2.1.288 or later.
+
+## Release
+
+```bash
+make dmg        # build/Cove.dmg: the app, an Applications shortcut, Hooks/, Install Hooks.command, Read Me.txt
+make test-dmg   # mounts it, runs the install script against a scratch HOME, checks the files and the helper
+make release    # tags v<version>, pushes main and the tag, publishes a GitHub release with the dmg attached
+```
+
+The version is `CFBundleShortVersionString` in `Support/Info.plist`; `CFBundleVersion` is the commit count. The bundle id (`com.jameswebster.cove`) and the "Cove Dev" certificate never change, so macOS keeps every permission grant across updates: a new version is just the new `Cove.app` dragged over the old one.
+
 ## Remove
 
 ```bash

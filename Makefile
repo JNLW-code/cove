@@ -6,8 +6,11 @@ BUILD      := .build/release
 OUT        := build/$(APP).app
 HOOKS      := $(HOME)/.claude/island
 SWIFTFLAGS := -c release -Xswiftc -warnings-as-errors
+VERSION    := $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
+DMG        := build/Cove.dmg
+STAGE      := build/dmg
 
-.PHONY: check build run install install-hooks uninstall cert quit clean fake
+.PHONY: check build run install install-hooks uninstall cert quit clean fake dmg test-dmg release
 
 ## check: build with warnings as errors (the only build the project does)
 check:
@@ -23,6 +26,7 @@ build: check cert
 	printf 'APPL????' > $(OUT)/Contents/PkgInfo
 	codesign --force --sign "$(IDENTITY)" --identifier $(BUNDLE) $(OUT)
 	codesign --verify --verbose=1 $(OUT)
+	codesign --force --sign "$(IDENTITY)" --identifier $(BUNDLE).hook $(BUILD)/cove-hook
 
 ## quit: stop any running copy
 quit:
@@ -51,6 +55,29 @@ install-hooks: check
 ## fake: drive every Claude state through the socket (app must be running)
 fake:
 	scripts/fake-events.sh
+
+## dmg: build/Cove.dmg with the app, an Applications shortcut, the hook files, the install script and the Read Me
+dmg: build
+	rm -rf $(STAGE) $(DMG)
+	mkdir -p $(STAGE)/Hooks
+	cp -R $(OUT) $(STAGE)/Cove.app
+	ln -s /Applications $(STAGE)/Applications
+	cp hooks/hook.sh $(BUILD)/cove-hook hooks/settings-snippet.json $(STAGE)/Hooks/
+	cp "release/Install Hooks.command" "release/Read Me.txt" $(STAGE)/
+	hdiutil create -volname "Cove $(VERSION)" -srcfolder $(STAGE) -ov -format UDZO -quiet $(DMG)
+	@echo "Built $(DMG) ($$(du -h $(DMG) | cut -f1))"
+
+## test-dmg: mount the dmg, run its install script against a scratch HOME, check the result
+test-dmg: dmg
+	scripts/test-dmg.sh $(DMG)
+
+## release: tag v$(VERSION), push main and the tag, publish a GitHub release with the dmg attached
+release: test-dmg
+	@git diff --quiet && git diff --cached --quiet || (echo "Commit your changes first"; exit 1)
+	git tag -a v$(VERSION) -m "Cove $(VERSION)"
+	git push origin main v$(VERSION)
+	gh release create v$(VERSION) $(DMG) --title "Cove $(VERSION)" --notes-file release/notes.md
+	@echo "Released Cove $(VERSION)"
 
 ## uninstall: quit, remove the app, its data and the hook files (then take the island lines out of ~/.claude/settings.json)
 uninstall: quit
