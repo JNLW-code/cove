@@ -116,6 +116,11 @@ final class Island {
     /// What is typed in the Launchpad's search field, and which page of the grid is showing.
     var launchpadQuery = ""
     var launchpadPage = 0
+    /// "By category": the grid shows folders; `launchpadFolder` is the one opened.
+    var launchpadCategories = UserDefaults.standard.bool(forKey: "launchpadCategories") {
+        didSet { UserDefaults.standard.set(launchpadCategories, forKey: "launchpadCategories") }
+    }
+    var launchpadFolder: AppCategory?
     /// Feedback under the reply box ("Sent", or why it could not be delivered).
     var replyStatus: String?
     /// The session whose row has its reply line open.
@@ -280,9 +285,18 @@ final class Island {
         notchSize.height + 12 + Self.launchpadSearchHeight + 22 + CGFloat(Self.launchpadRows) * Self.launchpadCell + 10 + 16 + 18
     }
 
-    /// The apps the grid shows: all of them, or the search matches.
-    var launchpadApps: [AppEntry] { apps.search(launchpadQuery) }
-    var launchpadPageCount: Int { max(1, Int((Double(launchpadApps.count) / Double(Self.launchpadPageSize)).rounded(.up))) }
+    /// Folders show when "By category" is on, nothing is typed and no folder is open.
+    var launchpadShowsFolders: Bool { launchpadCategories && launchpadQuery.isEmpty && launchpadFolder == nil }
+
+    /// The apps the grid shows: the search matches, the open folder, or all of them.
+    var launchpadApps: [AppEntry] {
+        if !launchpadQuery.isEmpty { return apps.search(launchpadQuery) }
+        if launchpadCategories, let folder = launchpadFolder { return apps.apps(in: folder) }
+        return apps.apps
+    }
+    var launchpadPageCount: Int {
+        launchpadShowsFolders ? 1 : max(1, Int((Double(launchpadApps.count) / Double(Self.launchpadPageSize)).rounded(.up)))
+    }
     var launchpadPageApps: [AppEntry] {
         let all = launchpadApps
         let start = min(launchpadPage, launchpadPageCount - 1) * Self.launchpadPageSize

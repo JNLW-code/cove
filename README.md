@@ -29,7 +29,7 @@ Then add the entries from [hooks/settings-snippet.json](hooks/settings-snippet.j
 - Claude rows: project · branch, the current step, agents, a timer. Click a row to bring the Claude app (or Terminal) forward.
 - Done cards show Claude's last message and a reply box. Return sends it: through the hook if Claude just asked a question, otherwise Cove opens the session and types it in (needs the Accessibility permission once; desktop sessions only).
 - A permission request opens the island by itself: Allow (⌃⌥Y) or Deny (⌃⌥N). Long commands scroll; Allow turns on once you've seen the end.
-- **Launchpad**: ⌘4 (changeable in the menu) or the top-left hot corner (off by default) drops a big grid of every app in /Applications, /System/Applications, its Utilities and ~/Applications under the notch. Typing searches (name, word starts, initials), Return opens the first match, Esc clears then closes, ← → or a two-finger swipe turn pages, a click on empty space closes. The app you were using keeps the front and gets the keyboard back on close.
+- **Launchpad**: ⌘4 (changeable in the menu) or the top-left hot corner (off by default) drops a big grid of every app in /Applications, /System/Applications, its Utilities and ~/Applications under the notch. Typing searches (name, word starts, initials), Return opens the first match, Esc clears then closes, ← → or a two-finger swipe turn pages, a click on empty space closes. The grid button top right switches to folders by category (Productivity, Creative, Developer, Music and video, Social, Utilities, Games, Other); click one to open it, ‹ to go back. The app you were using keeps the front and gets the keyboard back on close.
 - Menu: Theme, Tiles, Weather City, Peeks (which apps, sound), Allow / Deny Shortcuts, Launchpad (open, shortcut, hot corner), Permissions (ticks), Launch at Login, Demo, Quit.
 
 ## Remove
@@ -48,7 +48,7 @@ The menu's **Demo** item cycles through every island state with sample data. `ma
 notifyutil -p com.jameswebster.cove.show.expanded
 ```
 
-Commands: `theme.dark`, `theme.light`, `theme.system`, `demo.toggle`, `demo.next`, `show.resting`, `show.compact`, `show.peek`, `show.expanded`, `open`, `close`, `edit.toggle`, `pin.toggle`, `menu.open`, `launchpad.toggle`, `launchpad.next`, `launchpad.type`. They only change what the island shows; nothing can approve a command from outside the app.
+Commands: `theme.dark`, `theme.light`, `theme.system`, `demo.toggle`, `demo.next`, `show.resting`, `show.compact`, `show.peek`, `show.expanded`, `open`, `close`, `edit.toggle`, `pin.toggle`, `menu.open`, `launchpad.toggle`, `launchpad.next`, `launchpad.type`, `launchpad.categories`, `launchpad.folder`. They only change what the island shows; nothing can approve a command from outside the app.
 
 ## Layout
 

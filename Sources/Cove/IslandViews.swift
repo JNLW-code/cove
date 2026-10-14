@@ -26,6 +26,8 @@ final class IslandActions {
     func launchFirst() { controller?.launchFirst() }
     func launchpadEscape() { controller?.launchpadEscape() }
     func launchpadStep(_ delta: Int) { controller?.launchpadStep(delta) }
+    func toggleCategories() { controller?.toggleCategories() }
+    func openFolder(_ category: AppCategory?) { controller?.openFolder(category) }
 }
 
 /// Press feedback on every button: scale 0.97 in 120 ms.

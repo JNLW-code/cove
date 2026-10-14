@@ -17,6 +17,39 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     var initials: String { words.compactMap(\.first).map(String.init).joined() }
 }
 
+/// The eight Launchpad folders. Apps land in one by their LSApplicationCategoryType; none → Other.
+enum AppCategory: String, CaseIterable, Sendable {
+    case productivity, creative, developer, music, social, utilities, games, other
+
+    var title: String {
+        switch self {
+        case .productivity: "Productivity"
+        case .creative: "Creative"
+        case .developer: "Developer"
+        case .music: "Music and video"
+        case .social: "Social"
+        case .utilities: "Utilities"
+        case .games: "Games"
+        case .other: "Other"
+        }
+    }
+
+    static func of(_ type: String?) -> AppCategory {
+        guard let type, type.hasPrefix("public.app-category.") else { return .other }
+        let kind = String(type.dropFirst("public.app-category.".count))
+        if kind.hasSuffix("games") { return .games }
+        switch kind {
+        case "productivity", "business", "finance", "education", "reference": return .productivity
+        case "graphics-design", "photography", "video": return .creative
+        case "developer-tools": return .developer
+        case "music", "entertainment": return .music
+        case "social-networking": return .social
+        case "utilities": return .utilities
+        default: return .other
+        }
+    }
+}
+
 /// Every app in the four Applications folders, alphabetical, with icons rendered once at grid size.
 /// The folders are watched, so installing or removing an app updates the grid without a restart.
 @MainActor
@@ -175,6 +208,13 @@ final class AppCatalog {
         }
         return ranked.map(\.1)
     }
+
+    func apps(in category: AppCategory) -> [AppEntry] {
+        apps.filter { AppCategory.of($0.category) == category }
+    }
+
+    /// Folders that have at least one app, in the fixed order.
+    var categories: [AppCategory] { AppCategory.allCases.filter { !apps(in: $0).isEmpty } }
 
     func open(_ app: AppEntry) {
         NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration())

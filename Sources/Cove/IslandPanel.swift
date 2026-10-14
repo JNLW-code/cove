@@ -211,6 +211,7 @@ final class IslandController: NSObject {
         hoverTask?.cancel()
         island.launchpadQuery = ""
         island.launchpadPage = 0
+        island.launchpadFolder = nil
         island.replyingTo = nil; island.notingFor = nil; island.editing = false
         launchpadPrevious = NSWorkspace.shared.frontmostApplication
         haptic()
@@ -232,9 +233,29 @@ final class IslandController: NSObject {
         if let app = island.launchpadApps.first { launch(app) }
     }
 
-    /// Esc: clears the search first, then closes.
+    /// Esc: clears the search first, then leaves an open folder, then closes.
     func launchpadEscape() {
-        if island.launchpadQuery.isEmpty { collapse() } else { island.launchpadQuery = ""; island.launchpadPage = 0 }
+        if !island.launchpadQuery.isEmpty { island.launchpadQuery = ""; island.launchpadPage = 0 }
+        else if island.launchpadFolder != nil { openFolder(nil) }
+        else { collapse() }
+    }
+
+    /// The "By category" button: folders on or off (remembered).
+    func toggleCategories() {
+        haptic()
+        withAnimation(Self.switchAnimation) {
+            island.launchpadCategories.toggle()
+            island.launchpadFolder = nil
+            island.launchpadPage = 0
+        }
+    }
+
+    /// A folder's icons, or the back arrow (nil).
+    func openFolder(_ category: AppCategory?) {
+        withAnimation(Self.switchAnimation) {
+            island.launchpadFolder = category
+            island.launchpadPage = 0
+        }
     }
 
     func launchpadStep(_ delta: Int) {

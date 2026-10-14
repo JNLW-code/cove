@@ -319,6 +319,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "launchpad.toggle": controller.toggleLaunchpad()
         case "launchpad.next": controller.launchpadStep(1)
         case "launchpad.type": island.launchpadQuery = "ca"; island.launchpadPage = 0   // as if "ca" had been typed
+        case "launchpad.categories": controller.toggleCategories()
+        case "launchpad.folder": controller.openFolder(island.apps.categories.first)
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }
