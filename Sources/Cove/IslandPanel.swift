@@ -107,6 +107,10 @@ final class IslandController: NSObject {
             self.island.nextEvent = self.island.calendarModel.next
             if self.island.mode == .expanded { self.show(.expanded, animation: Self.switchAnimation) }
         }
+        // The models may already have data from their init (calendar loads at once); copy it now.
+        island.spotify = island.spotifyModel.track
+        island.weather = island.weatherModel.now
+        island.nextEvent = island.calendarModel.next
         island.claude.onPeek = { [weak self] content, seconds in self?.showPeek(content, seconds: seconds) }
         peekSources = PeekSources { [weak self] content, key in self?.showPeek(content, seconds: 3, key: key) }
         island.claude.onChanged = { [weak self] in self?.claudeChanged() }
