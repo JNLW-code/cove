@@ -458,7 +458,8 @@ struct SliderTile: View {
     }
 }
 
-/// The slider itself: a capsule track filled up to the value, a round knob at the end, drag anywhere on it.
+/// The slider itself, Control Centre style: a thin capsule track filled white up to the value and a white pill
+/// knob at the end. Drag anywhere on it.
 struct ThickSlider: View {
     let value: Double
     let palette: Palette
@@ -469,19 +470,20 @@ struct ThickSlider: View {
         GeometryReader { geo in
             let width = geo.size.width
             let shown = dragging ?? value
-            let knob: CGFloat = 20
+            let knob: CGFloat = 28
+            let knobHeight: CGFloat = 16
+            let track: CGFloat = 6
             let x = knob / 2 + CGFloat(min(1, max(0, shown))) * (width - knob)
             ZStack(alignment: .leading) {
-                Capsule().fill(palette.matteLabel.opacity(palette.isDark ? 0.22 : 0.14)).frame(height: 8)
-                Capsule().fill(Color.white).frame(width: x + knob / 2, height: 8)
-                    .shadow(color: .black.opacity(0.08), radius: 0.5)
-                Circle().fill(Color.white)
-                    .overlay(Circle().strokeBorder(Color.black.opacity(0.08), lineWidth: 0.5))
-                    .shadow(color: .black.opacity(0.18), radius: 1.5, y: 0.5)
-                    .frame(width: knob, height: knob)
+                Capsule().fill(palette.matteLabel.opacity(palette.isDark ? 0.22 : 0.14)).frame(height: track)
+                Capsule().fill(Color.white).frame(width: x, height: track)
+                Capsule().fill(Color.white)
+                    .overlay(Capsule().strokeBorder(Color.black.opacity(0.06), lineWidth: 0.5))
+                    .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+                    .frame(width: knob, height: knobHeight)
                     .offset(x: x - knob / 2)
             }
-            .frame(height: knob)
+            .frame(height: knobHeight)
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { drag in
