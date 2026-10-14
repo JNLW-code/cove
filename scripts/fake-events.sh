@@ -10,7 +10,8 @@ export COVE_HOOK_AWAY=${COVE_HOOK_AWAY:-999999}   # tests ignore the away check
 send() { printf '%s\n' "$1" | nc -U "$SOCK" 2>/dev/null; }
 ev()   { send "{\"v\":1,\"event\":\"$1\",\"session_id\":\"$2\",$3}"; sleep "${4:-0.4}"; }
 A=fake-quoteflow; B=fake-worktree; C=fake-home
-QF='"cwd":"/Users/jameswebster/Desktop/quoteflow-v3","project":"quoteflow-v3","branch":"feat/notch","term":"claude-desktop","pid":1'
+TRANSCRIPT="$(cd "$(dirname "$0")" && pwd)/fake-transcript.jsonl"   # 3 prompts, two Fable messages ≈ $0.93 (one of them written as two rows)
+QF='"cwd":"/Users/jameswebster/Desktop/quoteflow-v3","project":"quoteflow-v3","branch":"feat/notch","term":"claude-desktop","pid":1,"transcript_path":"'"$TRANSCRIPT"'"'
 WT='"cwd":"/Users/jameswebster/Desktop/qf-wt-rec","project":"quoteflow-v3","branch":"rec-fix","term":"Apple_Terminal","pid":1'
 HM='"cwd":"/Users/jameswebster","term":"claude-desktop","pid":1'
 

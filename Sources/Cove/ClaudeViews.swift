@@ -72,6 +72,9 @@ struct SessionRow: View {
             }
             Spacer(minLength: 8)
             trailing(p)
+            if let stats = statsText {
+                Text(stats).font(Theme.digits(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1).fixedSize()
+            }
             if let percent = session.contextPercent {
                 Text("\(percent)%").font(Theme.digits(11, .medium))
                     .foregroundStyle(percent >= 90 ? p.blocked : percent >= 80 ? p.needsYou : p.tertiaryLabel)
@@ -89,6 +92,14 @@ struct SessionRow: View {
         }
         .padding(.horizontal, 14)
         .frame(height: Island.rowHeight)
+    }
+
+    /// "64 turns · $87" from the transcript; each part hidden while it is 0.
+    private var statsText: String? {
+        var parts: [String] = []
+        if session.usage.turns > 0 { parts.append("\(session.usage.turns) turn\(session.usage.turns == 1 ? "" : "s")") }
+        if session.usage.costUSD >= 0.005 { parts.append(costText(session.usage.costUSD)) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     @ViewBuilder private func leading(_ p: Palette) -> some View {

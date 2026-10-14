@@ -462,7 +462,7 @@ final class IslandController: NSObject {
         peekTask = nil
         pendingPeekSeconds = nil
         island.demo = false
-        island.claude.setDemoSessions([])
+        island.claude.endDemo()
         island.spotify = island.spotifyModel.track
         island.weather = island.weatherModel.now
         island.nextEvent = island.calendarModel.next

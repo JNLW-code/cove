@@ -26,7 +26,7 @@ func str(_ key: String) -> String? { input[key] as? String }
 
 var message: [String: Any] = ["v": 1, "event": event]
 for key in ["session_id", "agent_id", "agent_type", "tool_name", "tool_use_id", "cwd", "session_title",
-            "source", "reason", "notification_type", "permission_mode", "stop_hook_active"] {
+            "source", "reason", "notification_type", "permission_mode", "stop_hook_active", "transcript_path"] {
     if let value = input[key] { message[key] = value }
 }
 if let pid = ProcessInfo.processInfo.environment["CLAUDE_PID"].flatMap(Int32.init) { message["pid"] = pid }

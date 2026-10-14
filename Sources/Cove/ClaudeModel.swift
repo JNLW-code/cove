@@ -108,6 +108,11 @@ final class ClaudeSession: Identifiable {
     var replyRequestID: String?
     /// How full the context window is, 0–100, when known.
     var contextPercent: Int?
+    /// Where Claude Code writes this session's transcript; cost and turns are read from it.
+    var transcriptPath: String?
+    /// What the session has cost so far and how many prompts it has had, from the transcript.
+    var usage = UsageTotals()
+    var usageRead = Date.distantPast
     var state: State = .idle
     var turnStart: Date?
     var lastEvent = Date()
@@ -184,7 +189,10 @@ final class ClaudeModel {
     static let quietAfter: TimeInterval = 600
     static let stepHold: TimeInterval = 0.7
 
-    private(set) var sessions: [ClaudeSession] = []
+    /// The rows on screen: the demo's sample rows while the demo runs, else the live sessions.
+    var sessions: [ClaudeSession] { demoSessions ?? live }
+    private var live: [ClaudeSession] = []
+    private var demoSessions: [ClaudeSession]?
     private(set) var cards: [PermissionCard] = []
     /// Peek requests the controller shows (set by `handle`, consumed by the controller).
     var onPeek: ((PeekContent, Double) -> Void)?
@@ -207,6 +215,7 @@ final class ClaudeModel {
     var frontCardGuarded: Bool { Date().timeIntervalSince(frontCardShownAt) < Self.guardSeconds }
     var socket: ClaudeSocket?
 
+    private let reader = TranscriptReader()
     private var quietTasks: [String: Task<Void, Never>] = [:]
     private var stepTasks: [String: Task<Void, Never>] = [:]
     private var processWatchers: [String: DispatchSourceProcess] = [:]
@@ -214,7 +223,7 @@ final class ClaudeModel {
     var active: [ClaudeSession] { sessions.sorted { $0.urgency > $1.urgency } }
     var mostUrgent: ClaudeSession? { active.first { $0.urgency > 0 } }
 
-    func session(_ id: String) -> ClaudeSession? { sessions.first { $0.id == id } }
+    func session(_ id: String) -> ClaudeSession? { live.first { $0.id == id } }
 
     // MARK: Events
 
@@ -235,7 +244,13 @@ final class ClaudeModel {
         if let host = m.string("host_session_id"), !host.isEmpty { s.hostID = host }
         if let percent = m.int("context_percent") { s.contextPercent = min(100, max(0, percent)) }
         else if let tokens = m.int("context_tokens") { s.contextPercent = min(100, Int((Double(tokens) / Double(Self.contextWindow(tokens))) * 100)) }
+        if let path = m.string("transcript_path"), !path.isEmpty { s.transcriptPath = path }
         let agent = m.string("agent_id")
+        switch m.event {
+        case "SessionStart", "UserPromptSubmit", "Stop": readUsage(s)
+        case "PreToolUse" where Date().timeIntervalSince(s.usageRead) > Self.usageEvery: readUsage(s)   // long turns stay current
+        default: break
+        }
 
         switch m.event {
         case "SessionStart":
@@ -322,6 +337,22 @@ final class ClaudeModel {
         onChanged?()
     }
 
+    static let usageEvery: TimeInterval = 60
+
+    /// Totals the transcript's new lines off the main thread, then updates the row.
+    private func readUsage(_ s: ClaudeSession) {
+        guard let path = s.transcriptPath else { return }
+        s.usageRead = Date()
+        let id = s.id
+        Task { [weak self] in
+            guard let self else { return }
+            let totals = await self.reader.refresh(session: id, transcript: path)
+            guard let s = self.session(id), s.usage != totals else { return }
+            s.usage = totals
+            self.onChanged?()
+        }
+    }
+
     /// 1,000,000 when the model setting says [1m] (or the context is already past 200k), else 200,000.
     static func contextWindow(_ tokens: Int) -> Int {
         if tokens > 200_000 { return 1_000_000 }
@@ -344,7 +375,7 @@ final class ClaudeModel {
 
     private func add(_ id: String) -> ClaudeSession {
         let s = ClaudeSession(id: id)
-        sessions.append(s)
+        live.append(s)
         return s
     }
 
@@ -368,8 +399,9 @@ final class ClaudeModel {
 
     private func end(_ id: String) {
         if let s = session(id) { closeReply(s) }
+        Task { [reader] in await reader.forget(session: id) }
         settleCards(for: id)
-        sessions.removeAll { $0.id == id }
+        live.removeAll { $0.id == id }
         quietTasks[id]?.cancel(); quietTasks[id] = nil
         stepTasks[id]?.cancel(); stepTasks[id] = nil
         processWatchers[id]?.cancel(); processWatchers[id] = nil
@@ -438,7 +470,7 @@ final class ClaudeModel {
 
     /// The hook gave up (timed out, or Claude went on without us): drop the card, Claude is asking in the app now.
     func requestClosed(_ requestID: String) {
-        if let s = sessions.first(where: { $0.replyRequestID == requestID }) { s.replyRequestID = nil; return }
+        if let s = live.first(where: { $0.replyRequestID == requestID }) { s.replyRequestID = nil; return }
         guard let card = cards.first(where: { $0.id == requestID }) else { return }
         cards.removeAll { $0.id == requestID }
         if let s = session(card.sessionID), !cards.contains(where: { $0.sessionID == s.id }) { s.state = .needsYou(.askingInApp) }
@@ -465,9 +497,15 @@ final class ClaudeModel {
 
     func card(for s: ClaudeSession) -> PermissionCard? { cards.first { $0.sessionID == s.id } }
 
-    /// Demo only: replaces the sessions with sample rows.
+    /// Demo only: shows sample rows instead of the live sessions, which keep updating underneath.
     func setDemoSessions(_ demo: [ClaudeSession]) {
-        sessions = demo
+        demoSessions = demo
+        onChanged?()
+    }
+
+    /// Demo over: the live sessions are back.
+    func endDemo() {
+        demoSessions = nil
         onChanged?()
     }
 

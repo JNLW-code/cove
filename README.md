@@ -51,7 +51,7 @@ Commands: `theme.dark`, `theme.light`, `theme.system`, `demo.toggle`, `demo.next
 
 ## Layout
 
-- `Sources/Cove/` the app. `Theme.swift` holds every colour and font; `IslandViews.swift` has the one `TileView` every tile uses; `IslandPanel.swift` is the window over the notch; `ClaudeSocket.swift`, `ClaudeModel.swift`, `ClaudeViews.swift` are the Claude side.
+- `Sources/Cove/` the app. `Theme.swift` holds every colour and font; `IslandViews.swift` has the one `TileView` every tile uses; `IslandPanel.swift` is the window over the notch; `ClaudeSocket.swift`, `ClaudeModel.swift`, `ClaudeViews.swift` are the Claude side; `Usage.swift` reads cost and turn counts from the session transcripts.
 - `Sources/CoveHook/` the hook helper. `hooks/` the shell wrapper and the settings snippet. `scripts/` the certificate and fake-event scripts.
 - `Support/Info.plist` bundle settings (no Dock icon, deployment target 26.0, permission texts).
 - `mockup/` the HTML design mockup. `refs/` the target screenshots. `PLAN.md` the plan, decisions and what's left.
