@@ -297,6 +297,18 @@ struct LaunchpadWidgets: View {
             if let weather = island.weather { WeatherWidget(weather: weather, palette: island.palette) }
         case .toggles:
             TogglesWidget(island: island)
+        case .sound:
+            let v = island.volume
+            SliderTile(title: "Sound", leading: "speaker.fill", trailing: "speaker.wave.3.fill", palette: island.palette,
+                       value: Double(v.level), onChange: { v.setLevel(Float($0)) })
+        case .keyboard:
+            let b = island.brightness
+            SliderTile(title: "Keyboard", leading: "light.min", trailing: nil, palette: island.palette,
+                       value: Double(b.keyboard), onChange: { b.setKeyboard(Float($0)) })
+        case .display:
+            let b = island.brightness
+            SliderTile(title: "Display", leading: "sun.min", trailing: "sun.max", palette: island.palette,
+                       value: Double(b.display), onChange: { b.setDisplay(Float($0)) })
         }
     }
 }
@@ -384,34 +396,20 @@ struct WeatherWidget: View {
     }
 }
 
-/// Wi-Fi, keyboard brightness down / up, dark mode and mute as buttons, the volume as a slider underneath.
+/// Wi-Fi, dark mode and mute as buttons. (Sound, Keyboard and Display are slider tiles of their own.)
 struct TogglesWidget: View {
     var island: Island
 
     var body: some View {
-        let p = island.palette
         let t = island.toggles
         let v = island.volume
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                toggle("wifi", on: t.wifiOn, enabled: t.wifiAvailable, help: "Wi-Fi") { t.toggleWifi() }
-                toggle("light.min", on: false, enabled: Typist.isTrusted, help: Typist.isTrusted ? "Keyboard backlight down" : "Keyboard backlight needs Accessibility (Permissions menu)") { t.keyboardBrightness(up: false) }
-                toggle("light.max", on: false, enabled: Typist.isTrusted, help: Typist.isTrusted ? "Keyboard backlight up" : "Keyboard backlight needs Accessibility (Permissions menu)") { t.keyboardBrightness(up: true) }
-                toggle("circle.lefthalf.filled", on: t.darkMode, enabled: true, help: "Dark mode") { t.toggleDarkMode() }
-                toggle(v.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", on: !v.muted, enabled: v.available, help: "Mute") { v.toggleMute() }
-            }
-            HStack(spacing: 8) {
-                Image(systemName: "speaker.wave.1").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.matteSecondary)
-                Slider(value: Binding(get: { Double(v.level) }, set: { v.setLevel(Float($0)) }), in: 0...1)
-                    .controlSize(.mini)
-                    .tint(p.matteAccent)
-                    .disabled(!v.hasLevel)
-                Image(systemName: "speaker.wave.3").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.matteSecondary)
-            }
-            .frame(height: 20)
+        HStack(spacing: 8) {
+            toggle("wifi", on: t.wifiOn, enabled: t.wifiAvailable, help: "Wi-Fi") { t.toggleWifi() }
+            toggle("circle.lefthalf.filled", on: t.darkMode, enabled: true, help: "Dark mode") { t.toggleDarkMode() }
+            toggle(v.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", on: !v.muted, enabled: v.available, help: "Mute") { v.toggleMute() }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 12)
+        .frame(height: Island.widgetHeight)
     }
 
     private func toggle(_ symbol: String, on: Bool, enabled: Bool, help: String, action: @escaping () -> Void) -> some View {
@@ -421,12 +419,74 @@ struct TogglesWidget: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(on ? (p.isDark ? Color.black : .white) : p.matteSecondary)
                 .frame(maxWidth: .infinity)
-                .frame(height: 40)
+                .frame(height: 44)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? p.matteAccent : p.matteSecondary.opacity(0.18)))
         }
         .buttonStyle(PressStyle(radius: 10))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
         .help(help)
+    }
+}
+
+/// A Control Centre style tile: a title, then a thick slider with the knob at the end and an icon each side.
+struct SliderTile: View {
+    let title: String
+    let leading: String
+    let trailing: String?
+    let palette: Palette
+    let value: Double
+    let onChange: (Double) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(Theme.font(13, .bold)).foregroundStyle(palette.matteLabel)
+            HStack(spacing: 8) {
+                Image(systemName: leading).font(.system(size: 11, weight: .semibold)).foregroundStyle(palette.matteSecondary).frame(width: 14)
+                ThickSlider(value: value, palette: palette, onChange: onChange)
+                if let trailing {
+                    Image(systemName: trailing).font(.system(size: 11, weight: .semibold)).foregroundStyle(palette.matteSecondary).frame(width: 14)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+    }
+}
+
+/// The slider itself: a capsule track filled up to the value, a round knob at the end, drag anywhere on it.
+struct ThickSlider: View {
+    let value: Double
+    let palette: Palette
+    let onChange: (Double) -> Void
+    @State private var dragging: Double?
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let shown = dragging ?? value
+            let knob: CGFloat = 20
+            let x = knob / 2 + CGFloat(min(1, max(0, shown))) * (width - knob)
+            ZStack(alignment: .leading) {
+                Capsule().fill(palette.matteSecondary.opacity(0.28)).frame(height: 8)
+                Capsule().fill(palette.matteLabel).frame(width: x + knob / 2, height: 8)
+                Circle().fill(palette.isDark ? Color.white : Color.white)
+                    .overlay(Circle().strokeBorder(Color.black.opacity(0.08), lineWidth: 0.5))
+                    .shadow(color: .black.opacity(0.18), radius: 1.5, y: 0.5)
+                    .frame(width: knob, height: knob)
+                    .offset(x: x - knob / 2)
+            }
+            .frame(height: knob)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { drag in
+                    let v = Double((drag.location.x - knob / 2) / (width - knob))
+                    let clamped = min(1, max(0, v))
+                    dragging = clamped
+                    onChange(clamped)
+                }
+                .onEnded { _ in dragging = nil })
+        }
+        .frame(height: 20)
     }
 }

@@ -17,13 +17,16 @@ enum TileKind: String, CaseIterable, Sendable {
 
 /// The Launchpad's widget row, each one switchable in the menu.
 enum LaunchpadWidget: String, CaseIterable, Sendable {
-    case nowPlaying, weather, toggles
+    case nowPlaying, weather, toggles, sound, keyboard, display
 
     var title: String {
         switch self {
         case .nowPlaying: "Now playing"
         case .weather: "Weather"
         case .toggles: "Quick toggles"
+        case .sound: "Sound"
+        case .keyboard: "Keyboard brightness"
+        case .display: "Display brightness"
         }
     }
 
@@ -31,7 +34,8 @@ enum LaunchpadWidget: String, CaseIterable, Sendable {
         switch self {
         case .nowPlaying: 262
         case .weather: 172
-        case .toggles: 292
+        case .toggles: 150
+        case .sound, .keyboard, .display: 160
         }
     }
 }
@@ -136,6 +140,7 @@ final class Island {
     let apps = AppCatalog()
     let musicModel = MusicModel()
     let toggles = QuickToggles()
+    let brightness = Brightness()
     var music: SpotifyTrack?
     private(set) var hiddenWidgets: Set<LaunchpadWidget>
     /// What is typed in the Launchpad's search field, and which page of the grid is showing.
@@ -324,6 +329,9 @@ final class Island {
             case .nowPlaying: return nowPlaying != nil
             case .weather: return weather != nil
             case .toggles: return true
+            case .sound: return volume.hasLevel
+            case .keyboard: return brightness.keyboardAvailable
+            case .display: return brightness.displayAvailable
             }
         }
     }

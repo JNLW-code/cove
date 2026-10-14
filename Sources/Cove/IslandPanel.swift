@@ -228,6 +228,7 @@ final class IslandController: NSObject {
         if !island.demo {
             island.toggles.refresh()
             island.volume.refresh()
+            island.brightness.refresh()
             island.spotifyModel.islandOpened()
             island.musicModel.islandOpened()
             island.weatherModel.islandOpened()
