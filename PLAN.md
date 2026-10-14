@@ -1,17 +1,14 @@
 # Cove — plan
 
-**Status (14 Oct 2026, 1:20 am, overnight run):** all 12 steps built and checked as far as I can without you. Cove is installed in ~/Applications and running; the hook files are in ~/.claude/island.
+**Status (14 Oct 2026, 1:30 pm):** v1 complete and in daily use. Installed in ~/Applications, hooks in ~/.claude/island, hook entries in ~/.claude/settings.json (James pasted hooks/settings-merged.json). All committed on `main`, nothing pushed (no remote).
 
-**Done:** mockup, skeleton, island shell, hook probe, Claude rows, Allow/Deny card, Spotify, Weather, Calendar + timer, peeks, settings menu with launch at login, README verified with its own commands, code and security reviews fixed. At rest: 0.0 % CPU, ~18 MB.
+**Done:** everything in the 12 steps plus James's feedback: exact-session open via `claude://` link, Claude's last message on the Done card, reply box (hook path within 45 s of a question, else Cove opens the session, clicks the message box, pastes, Return, then hands focus back), reply arrow on every row, context % per row, layout A (card on top, numbered rows beneath, × and ‹ ›), centred tiles, Google Calendar via macOS Internet Accounts.
 
-**Left for you (nothing else is blocked on me):**
-1. Paste `hooks/settings-snippet.json` into `~/.claude/settings.json` inside the existing `"hooks"` object (merge SessionStart and PostToolUse into the arrays already there). Open it with `open -e ~/.claude/settings.json`. Then start a Claude session and hover the notch: you should see its row.
-2. Hover the notch once: macOS asks for Calendar access (the tile is hidden until you say yes).
-3. Spotify is not installed on this Mac. Install/open it, play a track, hover: the tile appears; the first Allow/Deny of the Automation prompt lets the buttons work.
-4. Menu → Launch at Login (approve in Login Items if macOS asks).
-5. Try a real permission: a Manual-mode session running `touch build/x` opens the island with Allow/Deny.
+**Left (James picks):** 1 cost/turn count per row · 2 answer AskUserQuestion choices from the island · 3 git status on rows · 4 Do Not Disturb (needs Full Disk Access) · 5 chips row · 6 shortcut recorder · 7 session notes. Untried by James: Spotify (not installed), Launch at Login.
 
-**Blocked / cut:** Do Not Disturb peek (needs a paid team for INFocusStatusCenter, or Full Disk Access to watch the Focus assertions file; see Later). Brightness and AirPlay (no public API). Run B (phone answering while the hook waits) untested.
+**Known quirks:** first weather fetch after launch sometimes fails (retries after 60 s; reason now logged). A hidden off-screen 500×500 Cove window exists (harmless; probably an NSAlert/SwiftUI helper window). Terminal sessions have no per-session link (Terminal just comes forward) and can't take typed replies.
+
+**How to work on it:** `make check` / `make run` / `make install` / `make install-hooks` / `make fake`. Logs: `/usr/bin/log show --predicate 'subsystem == "com.jameswebster.cove"' --last 10m --style compact` (note: plain `log` is a zsh builtin). Drive the island: `notifyutil -p com.jameswebster.cove.<open|close|pin.toggle|show.expanded|…>`; test-only answer/reply commands exist when launched with `COVE_UI_TEST=1` from build/. Screenshots: `screencapture -x -R 380,0,710,330` (island), `-R 500,0,470,40` (pill). James's rules are in PROMPT.md (report format, "simply?", ask ≤5 numbered questions, never edit ~/.claude/settings.json).
 
 ## What it is
 Cove is a menu-bar app (no Dock icon) that draws a black "Dynamic Island" over the MacBook notch.
