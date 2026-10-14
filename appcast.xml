@@ -1,0 +1,16 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Cove</title>
+        <item>
+            <title>0.2</title>
+            <pubDate>Thu, 15 Oct 2026 00:50:21 +1100</pubDate>
+            <link>https://github.com/JNLW-code/cove/releases</link>
+            <sparkle:version>70</sparkle:version>
+            <sparkle:shortVersionString>0.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/JNLW-code/cove/releases/download/v0.2/Cove.dmg" length="2378363" type="application/octet-stream" sparkle:edSignature="6bsYRkoYB3pk41YkN5rxWwVB08gaElMtq3EJR8g2Z4a+Si7hZP7X115ZCmj8WZCwMegiolhr1t+elOVbOdylDA=="/>
+        </item>
+    </channel>
+</rss>
