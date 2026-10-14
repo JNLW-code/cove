@@ -28,24 +28,33 @@ enum Typist {
         // Electron apps only expose their page to Accessibility once asked to.
         AXUIElementSetAttributeValue(appElement, "AXManualAccessibility" as CFString, kCFBooleanTrue)
         var composer: AXUIElement?
-        for _ in 0..<4 {                      // the page tree can take a moment to appear
+        for _ in 0..<3 {                      // the page tree can take a moment to appear
             try? await Task.sleep(for: .milliseconds(400))
-            composer = findComposer(in: appElement)
+            composer = findComposer(in: appElement) ?? composerAtBottom(of: appElement)
             if composer != nil { break }
         }
-        guard let composer else {
-            Log.app.error("Typist: no message box; roles seen: \(roleSummary(in: appElement), privacy: .public)")
-            return "Could not find the message box in the Claude app."
-        }
-        AXUIElementSetAttributeValue(composer, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-        try? await Task.sleep(for: .milliseconds(150))
-        // Prefer setting the value straight in; fall back to pasting if the box refuses.
-        var typed = AXUIElementSetAttributeValue(composer, kAXValueAttribute as CFString, text as CFTypeRef) == .success
-        if typed {
+        var typed = false
+        if let composer {
+            AXUIElementSetAttributeValue(composer, kAXFocusedAttribute as CFString, kCFBooleanTrue)
             try? await Task.sleep(for: .milliseconds(150))
-            var value: AnyObject?
-            AXUIElementCopyAttributeValue(composer, kAXValueAttribute as CFString, &value)
-            typed = (value as? String)?.contains(text.prefix(20)) == true
+            // Prefer setting the value straight in; fall back to pasting if the box refuses.
+            typed = AXUIElementSetAttributeValue(composer, kAXValueAttribute as CFString, text as CFTypeRef) == .success
+            if typed {
+                try? await Task.sleep(for: .milliseconds(150))
+                var value: AnyObject?
+                AXUIElementCopyAttributeValue(composer, kAXValueAttribute as CFString, &value)
+                typed = (value as? String)?.contains(text.prefix(20)) == true
+            }
+        } else {
+            // No text box exposed: click where the message box sits (bottom centre of the window) to focus it.
+            guard let window = focusedWindowFrame(of: appElement) else {
+                Log.app.error("Typist: no window; roles seen: \(roleSummary(in: appElement), privacy: .public)")
+                return "Could not find the Claude window."
+            }
+            let point = CGPoint(x: window.midX, y: window.maxY - 70)
+            click(at: point)
+            try? await Task.sleep(for: .milliseconds(250))
+            Log.app.notice("Typist: clicked the message box area; roles seen: \(roleSummary(in: appElement), privacy: .public)")
         }
         if !typed {
             let pasteboard = NSPasteboard.general
@@ -58,7 +67,7 @@ enum Typist {
             if let saved { pasteboard.setString(saved, forType: .string) }
         }
         press(keyCode: 36, flags: [])                // Return sends
-        Log.app.notice("Typist: composer \(describe(composer), privacy: .public), via \(typed ? "AXValue" : "paste", privacy: .public)")
+        Log.app.notice("Typist: composer \(composer.map(describe) ?? "clicked", privacy: .public), via \(typed ? "AXValue" : "paste", privacy: .public)")
         return nil
     }
 
@@ -84,6 +93,38 @@ enum Typist {
         return best?.0
     }
 
+    /// The element under the bottom-centre of the window, climbed up to a text box if there is one.
+    private static func composerAtBottom(of app: AXUIElement) -> AXUIElement? {
+        guard let window = focusedWindowFrame(of: app) else { return nil }
+        var hit: AXUIElement?
+        let point = CGPoint(x: window.midX, y: window.maxY - 70)
+        guard AXUIElementCopyElementAtPosition(app, Float(point.x), Float(point.y), &hit) == .success, var element = hit else { return nil }
+        for _ in 0..<8 {
+            var roleValue: AnyObject?
+            AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+            let role = roleValue as? String ?? ""
+            if role == "AXTextArea" || role == "AXTextField" || role == "AXComboBox" { return element }
+            var parent: AnyObject?
+            guard AXUIElementCopyAttributeValue(element, kAXParentAttribute as CFString, &parent) == .success, let p = parent else { break }
+            element = p as! AXUIElement
+        }
+        return nil
+    }
+
+    private static func focusedWindowFrame(of app: AXUIElement) -> CGRect? {
+        var windowValue: AnyObject?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &windowValue) == .success,
+              let window = windowValue else { return nil }
+        return frame(of: window as! AXUIElement)
+    }
+
+    private static func click(at point: CGPoint) {
+        guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left),
+              let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left) else { return }
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+    }
+
     /// For the log when the box is not found: which roles the app exposes (never any text).
     private static func roleSummary(in app: AXUIElement) -> String {
         var counts: [String: Int] = [:]
@@ -95,13 +136,13 @@ enum Typist {
     }
 
     private static func walk(_ element: AXUIElement, depth: Int, visit: (AXUIElement, String) -> Void) {
-        guard depth < 30 else { return }
+        guard depth < 60 else { return }
         var roleValue: AnyObject?
         AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
         visit(element, roleValue as? String ?? "")
         var children: AnyObject?
         guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
-              let kids = children as? [AXUIElement], kids.count < 400 else { return }
+              let kids = children as? [AXUIElement] else { return }
         for kid in kids { walk(kid, depth: depth + 1, visit: visit) }
     }
 
