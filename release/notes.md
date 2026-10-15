@@ -1,3 +1,3 @@
-In-app updates: from this version on, Cove offers new versions itself (Check for Updates… in the menu). Everything from 0.1 plus the health-check fixes. Download `Cove.dmg`, then follow `Read Me.txt` inside it: drag Cove to Applications, allow it once under System Settings > Privacy & Security, run `Install Hooks.command`, paste the snippet into `~/.claude/settings.json`.
+Rows and the pill show each session's name from the Claude app. Plans can be approved at once. The calendar tile opens the event in Google Calendar, in Chrome. Health-check fixes from 14 Oct.
 
-Needs a MacBook with a notch, Apple silicon, macOS 26 or later, and Claude Code 2.1.288 or later.
+Cove 0.2 and later update themselves to this version. On 0.1, download Cove.dmg once and follow the Read Me inside.
