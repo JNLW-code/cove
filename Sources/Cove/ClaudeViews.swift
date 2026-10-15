@@ -70,7 +70,9 @@ struct SessionRow: View {
             }
             leading(p)
             Text(session.label).font(Theme.font(12, .semibold)).foregroundStyle(p.label)
-                .lineLimit(1).truncationMode(.middle).layoutPriority(1)
+                .lineLimit(1).truncationMode(.tail).layoutPriority(1)
+                .frame(maxWidth: 230, alignment: .leading)
+                .help(session.labelWithPlace)
             if let note = session.note {
                 Text(note).font(Theme.font(11)).italic().foregroundStyle(p.secondaryLabel).lineLimit(1).truncationMode(.tail)
                     .frame(maxWidth: 170, alignment: .leading)
@@ -264,7 +266,7 @@ struct ClaudeCard: View {
                         .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
                     }
                     Text(subtitle).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1)
-                    Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+                    Text(session.labelWithPlace).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
                     if isDone { ReplyLine(session: session, island: island, actions: actions, autoFocus: false).frame(height: Island.replyRow - 8).padding(.top, 2) }
                 }
                 .padding(.leading, 20)
@@ -399,7 +401,7 @@ struct PermissionCardView: View {
                     } else {
                         Text(card.command).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1).truncationMode(.tail)
                     }
-                    Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+                    Text(session.labelWithPlace).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
                 }
                 .padding(.leading, 20)
                 .padding(.vertical, long ? 18 : 0)
@@ -486,7 +488,7 @@ struct QuestionCardView: View {
                             .opacity(picked.isEmpty && typed.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
                         }
                     }
-                    Text(session.label).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+                    Text(session.labelWithPlace).font(Theme.font(11)).foregroundStyle(p.tertiaryLabel).lineLimit(1)
                 }
                 .padding(.leading, 20).padding(.trailing, 20).padding(.vertical, 18)
             }

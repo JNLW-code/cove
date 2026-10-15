@@ -29,6 +29,14 @@ for key in ["session_id", "agent_id", "agent_type", "tool_name", "tool_use_id", 
             "source", "reason", "notification_type", "permission_mode", "stop_hook_active", "transcript_path"] {
     if let value = input[key] { message[key] = value }
 }
+// The name the session has in the Claude app's sidebar ("Stream A - V3 Current"): Claude Code keeps it next to the
+// transcript in <session>/custom-title.json. Sent when the hook input has no session_title of its own.
+if message["session_title"] == nil, let transcript = str("transcript_path"), transcript.hasSuffix(".jsonl"),
+   let data = FileManager.default.contents(atPath: String(transcript.dropLast(6)) + "/custom-title.json"),
+   let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+   let title = json["customTitle"] as? String, !title.isEmpty {
+    message["session_title"] = title
+}
 if let pid = ProcessInfo.processInfo.environment["CLAUDE_PID"].flatMap(Int32.init) { message["pid"] = pid }
 message["term"] = ProcessInfo.processInfo.environment["TERM_PROGRAM"] ?? ""
 // The desktop app's own session id, so a click on the row can open that exact session.

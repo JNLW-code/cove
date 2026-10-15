@@ -33,7 +33,7 @@ enum Demo {
 
     static func sessions() -> [ClaudeSession] {
         let a = ClaudeSession(id: "demo-a")
-        a.project = "quoteflow-v3"; a.branch = "feat/notch"; a.term = "claude-desktop"
+        a.project = "quoteflow-v3"; a.branch = "feat/notch"; a.term = "claude-desktop"; a.title = "Stream A - V3 Current"
         a.turnStart = Date().addingTimeInterval(-252); a.agents = ["x", "y", "z"]; a.state = .working(.editing)
         a.filesChanged = ["a", "b"]; a.usage = UsageTotals(costUSD: 12.4, turns: 41); a.dirtyFiles = 3; a.unpushed = 2
         let b = ClaudeSession(id: "demo-b")

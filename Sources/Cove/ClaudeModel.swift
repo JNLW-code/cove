@@ -183,12 +183,21 @@ final class ClaudeSession: Identifiable {
     init(id: String) { self.id = id }
 
     /// "project · branch", else the session title, else the folder name.
+    /// What the row and the pill call this session: its name in the Claude app when it has one, else project · branch.
     var label: String {
-        if let project { return branch.map { "\(project) · \($0)" } ?? project }
         if let title, !title.isEmpty { return title }
+        return place
+    }
+
+    /// project · branch (or the folder), shown under a named session so the name never hides where it runs.
+    var place: String {
+        if let project { return branch.map { "\(project) · \($0)" } ?? project }
         let folder = URL(fileURLWithPath: cwd).lastPathComponent
         return folder.isEmpty ? "Claude" : folder
     }
+
+    /// "Stream A · quoteflow-v3 · main" for the cards; just the place when there is no name.
+    var labelWithPlace: String { title.map { $0.isEmpty ? place : "\($0) · \(place)" } ?? place }
 
     var isWorking: Bool {
         if case .working = state { return true }
