@@ -362,7 +362,8 @@ struct PermissionCardView: View {
         let p = island.palette
         let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
         let long = card.isPlan || Island.isLong(card.command)
-        let allowOn = long ? scrolledToEnd : true
+        // A long command must be read to the end before Allow turns on; a plan can be approved at once.
+        let allowOn = long && !card.isPlan ? scrolledToEnd : true
         ZStack(alignment: .leading) {
             shape.fill(p.tile).overlay(shape.strokeBorder(p.needsYou, lineWidth: 1))
             HStack(alignment: long ? .top : .center, spacing: 0) {
@@ -395,8 +396,8 @@ struct PermissionCardView: View {
                                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
                                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
                         }
-                        Text(scrolledToEnd ? "\(card.isPlan ? "Full plan" : "Full command") seen · \(lines) lines"
-                                           : "Scroll to the end to turn on \(card.isPlan ? "Approve" : "Allow") · \(lines) lines")
+                        Text(card.isPlan ? "\(lines) lines · scroll to read it all, or Approve now"
+                             : scrolledToEnd ? "Full command seen · \(lines) lines" : "Scroll to the end to turn on Allow · \(lines) lines")
                             .font(Theme.font(11)).foregroundStyle(p.tertiaryLabel)
                     } else {
                         Text(card.command).font(Theme.font(12.5)).foregroundStyle(p.secondaryLabel).lineLimit(1).truncationMode(.tail)

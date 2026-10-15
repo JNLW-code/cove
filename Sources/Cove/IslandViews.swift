@@ -29,6 +29,7 @@ final class IslandActions {
     func toggleCategories() { controller?.toggleCategories() }
     func openFolder(_ category: AppCategory?) { controller?.openFolder(category) }
     func nowPlaying(_ command: SpotifyCommand) { controller?.nowPlaying(command) }
+    func openCalendarEvent() { controller?.openCalendarEvent() }
 }
 
 /// The colour a hover shade is drawn in (the theme's label colour at low opacity), set once per island surface.
@@ -535,7 +536,12 @@ struct TileView: View {
         case .weather:
             if let weather = island.weather { WeatherTileContent(weather: weather, palette: p) }
         case .calendar:
-            if let event = island.nextEvent { CalendarTileContent(event: event, palette: p) }
+            if let event = island.nextEvent {
+                CalendarTileContent(event: event, palette: p)
+                    .contentShape(Rectangle())
+                    .onTapGesture { if !island.editing { actions.openCalendarEvent() } }
+                    .help("Open in Calendar")
+            }
         case .timer:
             TimerTileContent(timer: island.timer, palette: p)
         }

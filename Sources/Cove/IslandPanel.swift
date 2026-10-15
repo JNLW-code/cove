@@ -355,7 +355,7 @@ final class IslandController: NSObject {
     /// Allow or Deny from a button or shortcut. Ignored for 400 ms after a card appears or moves on.
     func answer(_ card: PermissionCard, allow: Bool, message: String? = nil) {
         guard !island.claude.frontCardGuarded, island.displayedCard?.id == card.id else { return }
-        if allow, card.isPlan || Island.isLong(card.command), !island.claude.frontCardFullySeen { return }
+        if allow, !card.isPlan, Island.isLong(card.command), !island.claude.frontCardFullySeen { return }
         haptic()
         island.claude.answer(card, allow: allow, message: message)
         let content = card.isPlan
@@ -588,6 +588,14 @@ final class IslandController: NSObject {
     func nowPlaying(_ command: SpotifyCommand) {
         guard !island.demo else { return }
         if island.nowPlayingIsSpotify { island.spotifyModel.send(command) } else { island.musicModel.send(command) }
+    }
+
+    /// The Calendar tile: the event opens in Calendar and the island closes.
+    func openCalendarEvent() {
+        guard !island.demo else { return }
+        haptic()
+        island.calendarModel.openNext()
+        collapse()
     }
 
     func toggleWidget(_ widget: LaunchpadWidget) {

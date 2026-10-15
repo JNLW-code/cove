@@ -1,3 +1,4 @@
+import AppKit
 import EventKit
 import Foundation
 
@@ -52,13 +53,42 @@ final class CalendarModel: NSObject {
         if let event = events.first {
             let when = event.isAllDay ? Self.dayFormatter.string(from: event.startDate) + " · All day" : Self.when(event.startDate)
             next = CalendarEvent(title: event.title ?? "Event", when: when,
-                                 dayName: Self.dayName(event.startDate), dayNumber: Self.dayNumber(event.startDate))
+                                 dayName: Self.dayName(event.startDate), dayNumber: Self.dayNumber(event.startDate),
+                                 openURL: Self.openURL(for: event))
+            Log.app.notice("Calendar: next event link \(self.next?.openURL?.absoluteString ?? "none", privacy: .public)")
             scheduleRollover(at: event.endDate ?? event.startDate.addingTimeInterval(3600))
         } else {
             next = nil
             scheduleRollover(at: Calendar.current.date(byAdding: .hour, value: 6, to: start) ?? start.addingTimeInterval(21600))
         }
         onChange?()
+    }
+
+    /// The link Calendar understands for one occurrence of an event (the same one Itsycal and friends use).
+    private static func openURL(for event: EKEvent) -> URL? {
+        guard let id = event.eventIdentifier, !id.isEmpty else { return nil }
+        let stamp = Self.stampFormatter.string(from: event.startDate)
+        var parts = URLComponents()
+        parts.scheme = "ical"
+        parts.host = "ekevent"
+        parts.path = "/\(stamp)/\(id)"
+        parts.queryItems = [URLQueryItem(name: "method", value: "show"), URLQueryItem(name: "options", value: "more")]
+        return parts.url
+    }
+
+    private static let stampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyyMMdd'T'HHmmss"
+        return f
+    }()
+
+    /// Click on the tile: the event in Calendar, or just Calendar when the link is missing.
+    func openNext() {
+        if let url = next?.openURL { NSWorkspace.shared.open(url) }
+        else if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iCal") {
+            NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
+        }
     }
 
     private func scheduleRollover(at date: Date) {

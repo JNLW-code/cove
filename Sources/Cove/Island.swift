@@ -63,6 +63,8 @@ struct CalendarEvent: Equatable {
     var when: String
     var dayName: String
     var dayNumber: String
+    /// Opens this event in Calendar (ical://ekevent/<start>/<id>); nil for the demo.
+    var openURL: URL? = nil
 }
 
 /// What the compact pill shows: the most urgent session plus a count.
