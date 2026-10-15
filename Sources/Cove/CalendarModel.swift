@@ -64,30 +64,35 @@ final class CalendarModel: NSObject {
         onChange?()
     }
 
-    /// The link Calendar understands for one occurrence of an event (the same one Itsycal and friends use).
+    /// Google Calendar in the browser (James's choice, 16 Oct). The exact event when it lives in a Google calendar:
+    /// Google's event id is base64("<uid without @google.com> <calendar address>"), the address being the Google
+    /// calendar's title in macOS ("james@…" for the main one). Otherwise the day view for that date.
     private static func openURL(for event: EKEvent) -> URL? {
-        guard let id = event.eventIdentifier, !id.isEmpty else { return nil }
-        let stamp = Self.stampFormatter.string(from: event.startDate)
-        var parts = URLComponents()
-        parts.scheme = "ical"
-        parts.host = "ekevent"
-        parts.path = "/\(stamp)/\(id)"
-        parts.queryItems = [URLQueryItem(name: "method", value: "show"), URLQueryItem(name: "options", value: "more")]
-        return parts.url
+        if let uid = event.calendarItemExternalIdentifier, uid.hasSuffix("@google.com"),
+           event.calendar.source.title.lowercased().contains("google"), event.calendar.title.contains("@") {
+            var id = String(uid.dropLast("@google.com".count))
+            if event.hasRecurrenceRules {   // one occurrence: id_<start in UTC>
+                let f = DateFormatter()
+                f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = TimeZone(identifier: "UTC")
+                f.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+                id += "_" + f.string(from: event.startDate)
+            }
+            let eid = Data("\(id) \(event.calendar.title)".utf8).base64EncodedString()
+                .replacingOccurrences(of: "=", with: "")
+            return URL(string: "https://calendar.google.com/calendar/event?eid=\(eid)")
+        }
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: event.startDate)
+        return URL(string: "https://calendar.google.com/calendar/r/day/\(parts.year ?? 2026)/\(parts.month ?? 1)/\(parts.day ?? 1)")
     }
 
-    private static let stampFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyyMMdd'T'HHmmss"
-        return f
-    }()
-
-    /// Click on the tile: the event in Calendar, or just Calendar when the link is missing.
+    /// Click on the tile: the event (or its day) in Google Calendar, in Google Chrome (James's browser for it);
+    /// the default browser only when Chrome is not installed.
     func openNext() {
-        if let url = next?.openURL { NSWorkspace.shared.open(url) }
-        else if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iCal") {
-            NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
+        guard let url = next?.openURL ?? URL(string: "https://calendar.google.com/") else { return }
+        if let chrome = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") {
+            NSWorkspace.shared.open([url], withApplicationAt: chrome, configuration: NSWorkspace.OpenConfiguration())
+        } else {
+            NSWorkspace.shared.open(url)
         }
     }
 

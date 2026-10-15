@@ -540,7 +540,7 @@ struct TileView: View {
                 CalendarTileContent(event: event, palette: p)
                     .contentShape(Rectangle())
                     .onTapGesture { if !island.editing { actions.openCalendarEvent() } }
-                    .help("Open in Calendar")
+                    .help("Open in Google Calendar")
             }
         case .timer:
             TimerTileContent(timer: island.timer, palette: p)

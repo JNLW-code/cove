@@ -63,7 +63,7 @@ struct CalendarEvent: Equatable {
     var when: String
     var dayName: String
     var dayNumber: String
-    /// Opens this event in Calendar (ical://ekevent/<start>/<id>); nil for the demo.
+    /// Opens this event in Google Calendar (the event itself, or its day); nil for the demo.
     var openURL: URL? = nil
 }
 
