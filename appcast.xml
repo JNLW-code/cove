@@ -3,6 +3,16 @@
     <channel>
         <title>Cove</title>
         <item>
+            <title>0.5</title>
+            <pubDate>Fri, 16 Oct 2026 12:00:25 +1100</pubDate>
+            <link>https://github.com/JNLW-code/cove/releases</link>
+            <sparkle:version>82</sparkle:version>
+            <sparkle:shortVersionString>0.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/JNLW-code/cove/releases/download/v0.5/Cove.dmg" length="2342832" type="application/octet-stream" sparkle:edSignature="/rNcHRZUNzYvbJiVW4qqoatIo7OJvlZrD5Ok+xOKZcmo2gj1a71QtGsBPp67EKXH7CYO25BqxftNhL3KltAgCA=="/>
+        </item>
+        <item>
             <title>0.4</title>
             <pubDate>Fri, 16 Oct 2026 11:26:02 +1100</pubDate>
             <link>https://github.com/JNLW-code/cove/releases</link>
@@ -21,16 +31,6 @@
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
             <enclosure url="https://github.com/JNLW-code/cove/releases/download/v0.3.1/Cove.dmg" length="2398660" type="application/octet-stream" sparkle:edSignature="BERdq9oJdOGnLJJQnlUTxx3D21N3DBn+3NMvxLognWehj3kBqf6ewhqT+kx8J0+E2Ugtl3d5rdpK1CoJ0AgBCw=="/>
-        </item>
-        <item>
-            <title>0.3</title>
-            <pubDate>Fri, 16 Oct 2026 10:00:53 +1100</pubDate>
-            <link>https://github.com/JNLW-code/cove/releases</link>
-            <sparkle:version>76</sparkle:version>
-            <sparkle:shortVersionString>0.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/JNLW-code/cove/releases/download/v0.3/Cove.dmg" length="2390824" type="application/octet-stream" sparkle:edSignature="4Y6xeSxBigfvnA2WZG8K0n5JVovvFMFvog04XLvLXNQQeCYqEkdHttuwiiANuZ4I7IkEeLv1prlCwpHtWWQhCA=="/>
         </item>
     </channel>
 </rss>
