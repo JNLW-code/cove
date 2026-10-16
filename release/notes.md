@@ -1,1 +1,1 @@
-First-launch setup: Cove opens a "Welcome to Cove" window and sets up the Claude Code hooks, theme, tiles, hot corner and launch at login from your ticks. Also in the menu as "Set up Cove…". Plus everything from 0.3.1.
+Claude Code over SSH: sessions on a server reach the notch through an SSH tunnel. One command on the Mac sets it up (see "Claude Code over SSH" in the Read Me or the README). Rows show the server's name. Launch at Login now works from the main Applications folder too.

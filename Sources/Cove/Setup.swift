@@ -223,6 +223,8 @@ struct SetupView: View {
                          ? (ClaudeHooks.isSetUp ? "Already set up." : "Installs two small hook files in ~/.claude/island and adds Cove's hooks to ~/.claude/settings.json (a backup is kept).")
                          : "Claude Code was not found. Install it and run it once, then open Set up Cove… from the menu.")
                         .font(.caption).foregroundStyle(.secondary)
+                    Text("Claude Code on a server over SSH? One command on this Mac sets that up: see \"Claude Code over SSH\" in the Read Me.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

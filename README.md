@@ -38,6 +38,16 @@ Then add the entries from [hooks/settings-snippet.json](hooks/settings-snippet.j
 
 Download `Cove.dmg` from the [latest release](https://github.com/JNLW-code/cove/releases/latest) and follow the `Read Me.txt` inside it: drag Cove to Applications, allow it once under System Settings → Privacy & Security ("Open Anyway", because it is signed with a self-signed certificate rather than an Apple Developer ID), then answer the "Welcome to Cove" window. It installs the Claude Code hooks itself (`Setup.swift`: hook files from the app bundle into `~/.claude/island`, Cove's entries merged into `~/.claude/settings.json` with a backup, nothing already there touched) and sets the theme, tiles, hot corner and launch at login. The window is also in the menu as "Set up Cove…". The DMG still carries `Install Hooks.command` for doing the hooks by hand. Needs a MacBook with a notch, Apple silicon, macOS 26 or later and Claude Code 2.1.288 or later.
 
+## Claude Code over SSH
+
+Hooks run where Claude Code runs, so a session on a server cannot reach the notch by itself. One command fixes that for a host from your `~/.ssh/config`:
+
+```bash
+make remote HOST=vps      # or: scripts/install-remote.sh vps
+```
+
+It copies `remote/cove-hook.py` (a Python 3 version of the hook helper), `remote/hook.sh` and the settings snippet into `~/.claude/island` on the server, merges Cove's hook entries into the server's `~/.claude/settings.json` (backup kept), and adds one line to your `~/.ssh/config`: `RemoteForward 127.0.0.1:47925 "<cove.sock>"`, which makes the server's `localhost:47925` Cove's socket for the life of each SSH connection. Reconnect, start a Claude Code session there, hover the notch. Rows, Allow / Deny, questions, plans and typed replies all work; cost and context figures do not (the transcript is on the server), and clicking a row brings your terminal forward rather than an exact chat. The row shows the server's name after project · branch. The same files are on the DMG under "Claude Code over SSH". `make test-remote` drives the Python helper through a local TCP relay standing in for the tunnel (Cove launched with `COVE_UI_TEST=1`).
+
 ## Updates
 
 Cove checks the repo's `appcast.xml` once a day and offers new versions in place (Sparkle). "Check for Updates…" in the menu checks now. `make release` signs the DMG with the EdDSA key that `generate_keys` put in the login keychain (back it up with `.build/artifacts/sparkle/Sparkle/bin/generate_keys -x cove-sparkle-key.txt`, kept out of git) and publishes the appcast after the GitHub release. The public half is `SUPublicEDKey` in `Support/Info.plist`; Sparkle also insists the new app carries the same "Cove Dev" signature as the old one. `make test-update` proves the whole path on this Mac without GitHub: it builds a "-test" version, serves it from a local appcast and lets the current build update itself.

@@ -12,7 +12,7 @@ VERSION    := $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionStr
 DMG        := build/Cove.dmg
 STAGE      := build/dmg
 
-.PHONY: check build run install install-hooks uninstall cert quit clean fake dmg test-dmg appcast release test-update
+.PHONY: check build run install install-hooks uninstall cert quit clean fake dmg test-dmg appcast release test-update remote test-remote
 
 ## check: build with warnings as errors (the only build the project does)
 check:
@@ -71,6 +71,8 @@ dmg: build
 	ln -s /Applications $(STAGE)/Applications
 	cp hooks/hook.sh $(BUILD)/cove-hook hooks/settings-snippet.json $(STAGE)/Hooks/
 	cp "release/Install Hooks.command" "release/Read Me.txt" $(STAGE)/
+	mkdir -p "$(STAGE)/Claude Code over SSH"
+	cp remote/cove-hook.py remote/hook.sh remote/merge-settings.py hooks/settings-snippet.json scripts/install-remote.sh "$(STAGE)/Claude Code over SSH/"
 	hdiutil create -volname "Cove $(VERSION)" -srcfolder $(STAGE) -ov -format UDZO -quiet $(DMG)
 	@echo "Built $(DMG) ($$(du -h $(DMG) | cut -f1))"
 
@@ -98,6 +100,14 @@ release: test-dmg appcast
 test-update:
 	scripts/test-update.sh
 	$(MAKE) build
+
+## remote: set up a machine you reach over SSH (make remote HOST=vps): hook files + settings there, RemoteForward here
+remote:
+	scripts/install-remote.sh $(HOST) $(or $(PORT),47925)
+
+## test-remote: drive the Python helper through a local TCP relay standing in for the SSH tunnel (Cove must be running in test mode)
+test-remote:
+	scripts/test-remote.sh
 
 ## uninstall: quit, remove the app, its data and the hook files (then take the island lines out of ~/.claude/settings.json)
 uninstall: quit

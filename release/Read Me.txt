@@ -41,6 +41,20 @@ Permissions Cove asks for, each only when first needed
 - Full Disk Access (optional, never prompted): the Do Not Disturb peek. See
   Cove's menu > Permissions.
 
+Claude Code over SSH
+--------------------
+If you run Claude Code on a server over SSH, the hooks fire on the server, so
+the notch needs a tunnel. On this disk image, the folder "Claude Code over SSH"
+has everything. In Terminal on the Mac:
+
+    sh "/Volumes/Cove 0.5/Claude Code over SSH/install-remote.sh" <ssh host>
+
+(use the host name from your ~/.ssh/config, the one you type after "ssh").
+It puts three small files in ~/.claude/island on the server, adds Cove's hooks
+to the server's ~/.claude/settings.json, and adds one RemoteForward line for
+that host to your ~/.ssh/config. Reconnect with ssh, start a Claude Code
+session there, hover the notch. Needs Python 3 on the server.
+
 Updates
 -------
 Cove checks for new versions once a day and offers them in place; "Check for

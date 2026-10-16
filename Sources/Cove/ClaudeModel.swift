@@ -145,6 +145,8 @@ final class ClaudeSession: Identifiable {
     var title: String?
     var pid: Int32?
     var term = ""
+    /// The machine the session runs on when it is not this Mac (Claude Code over SSH); nil locally.
+    var host: String?
     /// The desktop app's own id for this session (opens the exact session); nil for terminal sessions.
     var hostID: String?
     /// What Claude last said (kept in memory only, cleared on the next prompt).
@@ -189,11 +191,16 @@ final class ClaudeSession: Identifiable {
         return place
     }
 
-    /// project · branch (or the folder), shown under a named session so the name never hides where it runs.
+    /// project · branch (or the folder), plus the host for an SSH session, shown under a named session.
     var place: String {
-        if let project { return branch.map { "\(project) · \($0)" } ?? project }
-        let folder = URL(fileURLWithPath: cwd).lastPathComponent
-        return folder.isEmpty ? "Claude" : folder
+        var text: String
+        if let project { text = branch.map { "\(project) · \($0)" } ?? project }
+        else {
+            let folder = URL(fileURLWithPath: cwd).lastPathComponent
+            text = folder.isEmpty ? "Claude" : folder
+        }
+        if let host { text += " · \(host)" }
+        return text
     }
 
     /// "Stream A · quoteflow-v3 · main" for the cards; just the place when there is no name.
@@ -310,6 +317,7 @@ final class ClaudeModel {
         if let title = m.string("session_title") { s.title = title }
         if let pid = m.int("pid").map(Int32.init), s.pid != pid { s.pid = pid; watch(s) }
         if let term = m.string("term") { s.term = term }
+        if let host = m.string("host"), !host.isEmpty { s.host = host }
         if let host = m.string("host_session_id"), !host.isEmpty { s.hostID = host }
         if let percent = m.int("context_percent") { s.contextPercent = min(100, max(0, percent)) }
         else if let tokens = m.int("context_tokens") { s.contextPercent = min(100, Int((Double(tokens) / Double(Self.contextWindow(tokens))) * 100)) }
