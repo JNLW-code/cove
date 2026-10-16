@@ -7,9 +7,19 @@
 set -eu
 HOST="${1:?usage: install-remote.sh <ssh host> [port]}"
 PORT="${2:-47925}"
-# Works from the repo (scripts/) and from the DMG folder (everything next to this file).
-HERE="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$HERE/cove-hook.py" ]; then R="$HERE"; SNIP="$HERE/settings-snippet.json"; else R="$HERE/../remote"; SNIP="$HERE/../hooks/settings-snippet.json"; fi
+# Works from the repo (scripts/), from the DMG folder (everything next to this file), or on its own: then the
+# files come from GitHub, so `curl -fsSL https://raw.githubusercontent.com/JNLW-code/cove/main/scripts/install-remote.sh | sh -s vps` is enough.
+HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd || pwd)"
+if [ -f "$HERE/cove-hook.py" ]; then R="$HERE"; SNIP="$HERE/settings-snippet.json"
+elif [ -f "$HERE/../remote/cove-hook.py" ]; then R="$HERE/../remote"; SNIP="$HERE/../hooks/settings-snippet.json"
+else
+  R="$(mktemp -d)"; SNIP="$R/settings-snippet.json"
+  BASE="https://raw.githubusercontent.com/JNLW-code/cove/main"
+  echo "== fetching the server files from GitHub"
+  for f in remote/cove-hook.py remote/hook.sh remote/merge-settings.py hooks/settings-snippet.json; do
+    curl -fsSL "$BASE/$f" -o "$R/$(basename "$f")" || { echo "Could not download $f"; exit 1; }
+  done
+fi
 SOCK="$HOME/Library/Application Support/Cove/cove.sock"
 TERM_NAME="${TERM_PROGRAM:-Apple_Terminal}"
 echo "== $HOST: hook files"
