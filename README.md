@@ -36,7 +36,7 @@ Then add the entries from [hooks/settings-snippet.json](hooks/settings-snippet.j
 
 ## Install from the DMG (no Xcode needed)
 
-Download `Cove.dmg` from the [latest release](https://github.com/JNLW-code/cove/releases/latest) and follow the `Read Me.txt` inside it: drag Cove to Applications, allow it once under System Settings → Privacy & Security ("Open Anyway", because it is signed with a self-signed certificate rather than an Apple Developer ID), double-click `Install Hooks.command` (right-click → Open if macOS refuses it), then paste `Hooks/settings-snippet.json` into the `"hooks"` object of `~/.claude/settings.json`. Needs a MacBook with a notch, Apple silicon, macOS 26 or later and Claude Code 2.1.288 or later.
+Download `Cove.dmg` from the [latest release](https://github.com/JNLW-code/cove/releases/latest) and follow the `Read Me.txt` inside it: drag Cove to Applications, allow it once under System Settings → Privacy & Security ("Open Anyway", because it is signed with a self-signed certificate rather than an Apple Developer ID), then answer the "Welcome to Cove" window. It installs the Claude Code hooks itself (`Setup.swift`: hook files from the app bundle into `~/.claude/island`, Cove's entries merged into `~/.claude/settings.json` with a backup, nothing already there touched) and sets the theme, tiles, hot corner and launch at login. The window is also in the menu as "Set up Cove…". The DMG still carries `Install Hooks.command` for doing the hooks by hand. Needs a MacBook with a notch, Apple silicon, macOS 26 or later and Claude Code 2.1.288 or later.
 
 ## Updates
 

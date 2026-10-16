@@ -21,14 +21,16 @@ Install
    an Apple Developer ID. Go to System Settings > Privacy & Security, scroll down
    to the message about Cove and click "Open Anyway", then open Cove again.
    You only do this once.
-3. Double-click "Install Hooks.command". If macOS refuses it the same way,
-   right-click it and choose Open. It copies two small files into
-   ~/.claude/island and opens a snippet in TextEdit.
-4. Paste the snippet's entries into ~/.claude/settings.json inside the "hooks"
-   object (create "hooks": { } if the file has none). If you already have hooks
-   for SessionStart or PostToolUse, add Cove's entries to those arrays rather
-   than replacing them. Claude Code reads the change by itself.
-5. Start a Claude Code session in a trusted folder. Rest the mouse on the notch.
+3. Cove opens a "Welcome to Cove" window. Tick what you want and click Finish.
+   With "Show my Claude Code sessions" ticked it installs the Claude Code hooks
+   for you: two small files in ~/.claude/island and Cove's entries in
+   ~/.claude/settings.json (your existing settings are kept; a backup is written
+   next to the file). Claude Code must have been run once before this.
+   The window is also in Cove's menu: "Set up Cove...".
+4. Start a Claude Code session in a trusted folder. Rest the mouse on the notch.
+
+If you would rather do the hooks by hand, "Install Hooks.command" on this disk
+image copies the files and opens the snippet to paste into settings.json.
 
 Permissions Cove asks for, each only when first needed
 -------------------------------------------------------

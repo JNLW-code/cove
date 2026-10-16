@@ -1,1 +1,1 @@
-Updates are now checked every hour (Sparkle's shortest interval) and a minute after launch, so a new version reaches you within the hour.
+First-launch setup: Cove opens a "Welcome to Cove" window and sets up the Claude Code hooks, theme, tiles, hot corner and launch at login from your ticks. Also in the menu as "Set up Cove…". Plus everything from 0.3.1.

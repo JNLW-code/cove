@@ -14,6 +14,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: IslandController?
     private var devCommands: DevCommands?
     private var updater: Updater?
+    private var setup: SetupController?
 
     static func main() {
         let app = NSApplication.shared
@@ -36,7 +37,15 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.onOpenMenu = { [weak self] in self?.statusItem?.button?.performClick(nil) }
         devCommands = DevCommands { [weak self] command in self?.handle(command) }
         updater = Updater()
+        setup = SetupController(island: island, controller: controller)
         Log.app.notice("Cove \(Self.version, privacy: .public) launched")
+        // First launch: the welcome window, a moment after the island has settled. Never again once closed.
+        if !SetupController.isDone {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(1))
+                self?.setup?.show()
+            }
+        }
     }
 
     static var version: String {
@@ -69,6 +78,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.autoenablesItems = false
         menu.addItem(item("Cove \(Self.version)", nil, enabled: false))
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates), enabled: updater?.canCheck ?? false))
+        menu.addItem(item("Set up Cove…", #selector(openSetup)))
         menu.addItem(.separator())
 
         menu.addItem(submenu("Theme", [("Dark", ThemeMode.dark), ("Light", .light), ("Follow macOS", .system), ("Glass", .glass)].map {
@@ -154,6 +164,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 ? line("Full Disk Access (Do Not Disturb peek)", .granted, why: "")
                 : item("Full Disk Access: not granted. Only for the Do Not Disturb peek — click to open System Settings", #selector(openFullDiskAccess)),
             item("Launch at Login: \(LaunchAtLogin.statusText)", nil, enabled: false),
+            item("Claude Code hooks: \(ClaudeHooks.isSetUp ? "set up" : (ClaudeHooks.claudeCodeFound ? "not set up (Set up Cove…)" : "Claude Code not found"))", nil, enabled: false),
         ]
     }
 
@@ -257,6 +268,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func checkForUpdates() { updater?.checkForUpdates() }
 
+    @objc private func openSetup() { setup?.show() }
+
     @objc private func toggleLaunchpad() { controller?.toggleLaunchpad() }
 
     @objc private func toggleWidget(_ sender: NSMenuItem) {
@@ -338,6 +351,9 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "launchpad.folder": controller.openFolder(island.apps.categories.first)
         case "launchpad.demo": island.music = Demo.track; island.weather = Demo.weather   // sample widgets without Spotify or Music
         case "update.check": updater?.checkForUpdates()
+        case "setup.open": setup?.show()
+        case "test.setup":   // applies the default choices without the window (hooks install into $HOME, so only in a scratch home)
+            if let lines = setup?.apply(SetupChoices()) { for line in lines { Log.app.notice("Setup result: \(line, privacy: .public)") } }
         case "test.update": updater?.checkInBackground()   // silent check against COVE_FEED, installs and relaunches
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }

@@ -26,6 +26,8 @@ build: check cert
 	cp Support/Info.plist $(OUT)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$(git rev-list --count HEAD 2>/dev/null || echo 1)" $(OUT)/Contents/Info.plist
 	printf 'APPL????' > $(OUT)/Contents/PkgInfo
+	mkdir -p $(OUT)/Contents/Resources/island
+	cp hooks/hook.sh $(BUILD)/cove-hook hooks/settings-snippet.json $(OUT)/Contents/Resources/island/
 	mkdir -p $(OUT)/Contents/Frameworks
 	cp -R $(SPARKLE)/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework $(OUT)/Contents/Frameworks/
 	codesign --force --deep --sign "$(IDENTITY)" $(OUT)/Contents/Frameworks/Sparkle.framework
