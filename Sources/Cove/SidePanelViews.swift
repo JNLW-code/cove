@@ -116,6 +116,8 @@ struct SessionPane: View {
             .padding(.horizontal, 10).padding(.vertical, 6)
             Rectangle().fill(p.rim).frame(height: 1)
             ChatList(session: session, island: island, actions: actions)
+            Rectangle().fill(p.rim).frame(height: 1)
+            PanelCompose(session: session, island: island, actions: actions)
         }
     }
 
@@ -539,5 +541,55 @@ struct PanelQuestionCard: View {
         picked = []
         typed = ""
         if index + 1 < card.questions.count { index += 1 } else { actions.answerQuestion(card, answers: answers) }
+    }
+}
+
+/// The reply box at the bottom of the panel (mockup: a text area with an accent edge, ↑ to send). Return sends,
+/// Option-Return makes a new line. The reply goes down the waiting Stop hook when Claude stopped on a question
+/// less than 45 s ago, otherwise Cove types it into the Claude app (`IslandController.sendReply`, as on the island).
+struct PanelCompose: View {
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let p = island.palette
+        let empty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Reply to \(session.label)…", text: $text, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(1...6)
+                .font(Theme.font(12.5))
+                .foregroundStyle(p.label)
+                .focused($focused)
+                .onSubmit(send)
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                .frame(minHeight: 44, alignment: .topLeading)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(p.island))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(focused ? p.accent.opacity(0.6) : p.rim, lineWidth: 1))
+            HStack(spacing: 8) {
+                Text(island.replyStatus ?? (session.replyRequestID != nil ? "Claude is waiting for your answer" : "Return sends · ⌥Return new line"))
+                    .font(Theme.font(10.5)).foregroundStyle(p.tertiaryLabel).lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 0)
+                Button(action: send) {
+                    Image(systemName: "arrow.up").font(.system(size: 10, weight: .bold)).foregroundStyle(p.allowText)
+                        .frame(width: 22, height: 22).background(Circle().fill(p.allowBackground))
+                }
+                .buttonStyle(PressStyle(radius: 11))
+                .disabled(empty)
+                .opacity(empty ? 0.35 : 1)
+                .help("Send to Claude")
+            }
+        }
+        .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 12)
+    }
+
+    private func send() {
+        let reply = text
+        guard !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        text = ""
+        actions.reply(reply, to: session)
     }
 }

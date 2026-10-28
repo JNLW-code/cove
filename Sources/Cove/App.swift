@@ -390,6 +390,7 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if let s = island.panelSession, let card = island.claude.card(for: s) { controller.answer(card, allow: command.hasSuffix("allow"), seen: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }
+        case "test.panel.reply": if let s = island.panelSession { controller.sendReply("test reply from the panel", to: s) }
         case "test.seen": island.claude.frontCardFullySeen = true   // as if the long box had been scrolled to the end
         case "test.note":   // first call opens the note line on the first row, second call keeps a sample note
             if let s = island.claude.sessions.first {
