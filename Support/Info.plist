@@ -2,26 +2,47 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleDevelopmentRegion</key><string>en-AU</string>
-	<key>CFBundleExecutable</key><string>Cove</string>
-	<key>CFBundleIdentifier</key><string>com.jameswebster.cove</string>
-	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-	<key>CFBundleName</key><string>Cove</string>
-	<key>CFBundleDisplayName</key><string>Cove</string>
-	<key>CFBundlePackageType</key><string>APPL</string>
-	<key>CFBundleShortVersionString</key><string>0.6</string>
-	<key>CFBundleVersion</key><string>1</string>
-	<key>LSMinimumSystemVersion</key><string>26.0</string>
-	<key>LSUIElement</key><true/>
-	<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
-	<key>NSHighResolutionCapable</key><true/>
-	<key>NSPrincipalClass</key><string>NSApplication</string>
-	<key>NSHumanReadableCopyright</key><string>James Webster</string>
-	<key>SUFeedURL</key><string>https://raw.githubusercontent.com/JNLW-code/cove/main/appcast.xml</string>
-	<key>SUPublicEDKey</key><string>5iVrnU1xHmf6VD8x6lzl9Syrp4wZpLGcR6xQFeTF/mc=</string>
-	<key>SUEnableAutomaticChecks</key><true/>
-	<key>SUScheduledCheckInterval</key><integer>3600</integer>
-	<key>NSAppleEventsUsageDescription</key><string>Cove controls Spotify (play, pause, next) and reads the artwork for the music tile.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key><string>Cove shows your next calendar event in the island.</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en-AU</string>
+	<key>CFBundleDisplayName</key>
+	<string>Cove</string>
+	<key>CFBundleExecutable</key>
+	<string>Cove</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.jameswebster.cove</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Cove</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.7</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Cove controls Spotify (play, pause, next) and reads the artwork for the music tile.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Cove shows your next calendar event in the island.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>James Webster</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/JNLW-code/cove/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>5iVrnU1xHmf6VD8x6lzl9Syrp4wZpLGcR6xQFeTF/mc=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>3600</integer>
 </dict>
 </plist>
