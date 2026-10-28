@@ -24,7 +24,6 @@ struct SidePanelRoot: View {
         .contentShape(shape)
         .environment(\.hoverShade, p.label)
         .focusEffectDisabled()   // no blue ring on whichever button SwiftUI would focus first
-        .simultaneousGesture(TapGesture().onEnded { actions.panelClicked() })
     }
 }
 

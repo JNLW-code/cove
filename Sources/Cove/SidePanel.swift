@@ -14,7 +14,7 @@ final class SidePanelController {
     private let actions: IslandActions
     private let panel: IslandPanel
     private let host: IslandHostView
-    private let hosting: NSHostingView<SidePanelRoot>
+    private let hosting: PanelHostingView
     /// A 1 pt strip down the right edge of the screen; its tracking area is what notices the mouse at the edge.
     private let edge: NSPanel
     private let edgeHost: IslandHostView
@@ -24,6 +24,7 @@ final class SidePanelController {
     private var refreshTask: Task<Void, Never>?
     private var outsideClickMonitor: Any?
     private var keyMonitor: Any?
+    private var clickMonitor: Any?
     private var previous: NSRunningApplication?
     private let reader = ChatReader()
     private var screenFrame = NSRect.zero
@@ -34,7 +35,7 @@ final class SidePanelController {
         self.island = island
         self.actions = actions
         host = IslandHostView(frame: NSRect(x: 0, y: 0, width: Self.width, height: 600))
-        hosting = NSHostingView(rootView: SidePanelRoot(island: island, actions: actions))
+        hosting = PanelHostingView(rootView: SidePanelRoot(island: island, actions: actions))
         panel = IslandPanel(contentRect: host.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         edgeHost = IslandHostView(frame: NSRect(x: 0, y: 0, width: 1, height: 600))
         edge = NSPanel(contentRect: edgeHost.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -192,17 +193,26 @@ final class SidePanelController {
     }
 
     /// Esc closes the panel once it has the keyboard (after a click in it). Other keys pass through.
+    /// Any click in the panel pins it (seen here, before SwiftUI, so a click on text or a button counts too).
     private func installKeyMonitor() {
-        guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.keyCode == 53, event.window === SidePanelController.shared?.panel else { return event }
-            Task { @MainActor in SidePanelController.shared?.close() }
-            return nil
+        if keyMonitor == nil {
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard event.keyCode == 53, event.window === SidePanelController.shared?.panel else { return event }
+                Task { @MainActor in SidePanelController.shared?.close() }
+                return nil
+            }
+        }
+        if clickMonitor == nil {
+            clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { event in
+                if event.window === SidePanelController.shared?.panel { Task { @MainActor in SidePanelController.shared?.clickedInside() } }
+                return event
+            }
         }
     }
 
     private func removeKeyMonitor() {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor); self.keyMonitor = nil }
+        if let clickMonitor { NSEvent.removeMonitor(clickMonitor); self.clickMonitor = nil }
     }
 
     // MARK: Content
@@ -238,4 +248,10 @@ final class SidePanelController {
     func forget(session id: String) {
         Task { [reader] in await reader.forget(session: id) }
     }
+}
+
+/// The panel's SwiftUI host: takes the first click even though Cove is never the active app (plain NSHostingView
+/// swallows it), so one click on a rail square or the background is enough.
+final class PanelHostingView: NSHostingView<SidePanelRoot> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
