@@ -1,1 +1,1 @@
-The Claude side panel now shows a permission card in the chat itself, under the tool line: Allow or Deny there (⌃⌥Y / ⌃⌥N still work), long commands open in a scroll box that must be read to the end, plans show Approve / Keep planning. "Allowed" or "Denied" stays under the tool line until your next prompt.
+Claude's questions (AskUserQuestion) now appear inside the side panel's chat: click an option, tick several and press Done, or type an answer. The answers go back to Claude the same way as from the island card.
