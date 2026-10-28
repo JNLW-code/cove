@@ -208,7 +208,7 @@
   .legend { position:absolute; left:40px; bottom:90px; width:560px; background:rgba(0,0,0,.72); color:#fff; border-radius:12px; padding:12px 14px; font-size:11.5px; line-height:1.5; z-index:6; }
   .legend b { color:#8fe3a2; } .legend u { color:#ffb86b; text-decoration:none; }
   /* combined: side-panel width, full features. Sessions as a collapsible strip on the left edge. */
-  .cx { position:absolute; top:40px; right:0; bottom:0; width:420px; display:flex; z-index:5; box-shadow:-20px 0 60px rgba(0,0,0,.35); border-radius:16px 0 0 0; overflow:hidden; }
+  .cx { position:absolute; top:40px; right:0; bottom:78px; width:420px; display:flex; z-index:5; box-shadow:-20px 0 60px rgba(0,0,0,.35); border-radius:16px 0 0 0; overflow:hidden; }
   .cx.glass { border-left:1px solid rgba(255,255,255,.55); border-top:1px solid rgba(255,255,255,.55); }
   .cx .rail { width:44px; border-right:1px solid rgba(127,127,127,.18); padding:10px 6px; display:flex; flex-direction:column; align-items:center; gap:8px; }
   .cx .rail .av { width:30px; height:30px; border-radius:9px; background:rgba(127,127,127,.14); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#1e2129; position:relative; }
@@ -238,8 +238,9 @@
   .screen.matte .cx .perm { background:#21242D; }
   .cx .perm .cmd { font-family:ui-monospace,Menlo,monospace; margin:3px 0 6px; }
   .cx .perm .p { display:flex; gap:6px; } .cx .perm .p span { padding:4px 10px; border-radius:11px; font-weight:600; background:rgba(127,127,127,.18); } .cx .perm .p span.a { background:#1e2129; color:#fff; } .screen.matte .cx .perm .p span.a { background:#fff; color:#111; }
-  .cx .compose { margin-top:auto; border-top:1px solid rgba(127,127,127,.18); padding:8px 10px; display:flex; flex-direction:column; gap:6px; }
-  .cx .compose .f { min-height:34px; border-radius:10px; background:rgba(127,127,127,.12); font-size:12px; color:#8a90a0; display:flex; align-items:center; padding:0 10px; }
+  .cx .compose { margin-top:auto; border-top:1px solid rgba(127,127,127,.18); padding:10px 10px 12px; display:flex; flex-direction:column; gap:6px; }
+  .cx .compose .f { min-height:64px; border-radius:12px; background:rgba(255,255,255,.7); border:1px solid rgba(59,130,208,.5); font-size:12.5px; color:#1e2129; display:flex; align-items:flex-start; padding:9px 10px; }
+  .screen.matte .cx .compose .f { background:#16181F; color:#E3E7EF; }
   .cx .compose .row2 { display:flex; gap:8px; font-size:10.5px; color:#8a90a0; align-items:center; }
   .cx .compose .row2 .chip { padding:2px 7px; border-radius:7px; background:rgba(127,127,127,.12); }
   .cx .compose .row2 .sp { flex:1; } .cx .compose .row2 .send { width:22px; height:22px; border-radius:50%; background:#1e2129; color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; } .screen.matte .cx .compose .row2 .send { background:#fff; color:#111; }
@@ -407,7 +408,7 @@ const STATES = {
         <div class="perm"><b>Claude wants to run</b><div class="cmd">npm run check</div><div class="p"><span class="a">Allow ⌃⌥Y</span><span>Always</span><span>Deny ⌃⌥N</span></div></div>
         <div class="ai" style="color:#8a90a0">Editing cart.ts…</div>
       </div>
-      <div class="compose"><div class="f">Reply to Claude… (⇧⏎ for a new line, drop a file to attach)</div><div class="row2"><span class="chip">Opus 5.5</span><span class="chip">High</span><span class="chip">/ commands</span><span class="chip">📎</span><span class="sp"></span><span class="send">↑</span></div></div>
+      <div class="compose"><div class="f">Also add the code to the quote PDF footer|</div><div class="row2"><span class="chip">Opus 5.5</span><span class="chip">High</span><span class="chip">/ commands</span><span class="chip">📎</span><span class="sp"></span><span class="send">↑</span></div></div>
     </div></div>` },
   "Settings": { cap: "⌘, from the island or the menu. Click a section on the left to see its options. Shown: Claude Code. The other sections are in the buttons that follow.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
     <div class="nav"><div>⚙ General</div><div class="on">✦ Claude Code</div><div>▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
