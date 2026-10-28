@@ -173,6 +173,40 @@
   .hovhint { position:absolute; right:0; top:200px; width:6px; height:140px; border-radius:3px 0 0 3px; background:rgba(255,255,255,.35); z-index:4; }
   .hovhint:after { content:"hover here"; position:absolute; right:12px; top:60px; font-size:11px; color:#fff; white-space:nowrap; opacity:.8; }
   .set .nav .pg { cursor:pointer; }
+  /* the wide Claude panel: sidebar + chat + top-right tools */
+  .cp { position:absolute; top:40px; right:0; bottom:0; width:720px; display:flex; z-index:5; box-shadow:-20px 0 60px rgba(0,0,0,.35); border-radius:16px 0 0 0; overflow:hidden; }
+  .cp.glass { border-left:1px solid rgba(255,255,255,.55); border-top:1px solid rgba(255,255,255,.55); }
+  .cp .sb { width:190px; padding:14px 10px; border-right:1px solid rgba(127,127,127,.18); font-size:12px; display:flex; flex-direction:column; gap:2px; }
+  .cp .sb .pj { font-size:11px; color:#8a90a0; margin:10px 6px 4px; display:flex; justify-content:space-between; }
+  .cp .sb .it { padding:6px 8px; border-radius:7px; display:flex; align-items:center; gap:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cp .sb .it.on { background:rgba(255,255,255,.75); font-weight:600; } .screen.matte .cp .sb .it.on { background:#2a2e38; }
+  .cp .sb i { width:7px; height:7px; border-radius:50%; background:#c0c4cc; flex:none; } .cp .sb i.b { background:var(--accent); } .cp .sb i.g { background:var(--green); } .cp .sb i.o { background:var(--orange); }
+  .cp .sb .new { color:var(--accent); }
+  .cp .sb .grey { color:#8a90a0; }
+  .cp .mn { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .cp .tb2 { height:40px; display:flex; align-items:center; padding:0 14px; gap:8px; border-bottom:1px solid rgba(127,127,127,.18); font-size:12.5px; }
+  .cp .tb2 b { font-weight:600; } .cp .tb2 .sp { flex:1; }
+  .cp .tb2 .ic { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#6b7180; }
+  .cp .tb2 .ic.app { background:rgba(127,127,127,.14); color:#1e2129; } .screen.matte .cp .tb2 .ic.app { color:#E3E7EF; }
+  .cp .tb2 .ic.dim { opacity:.35; }
+  .cp .body { flex:1; padding:14px 16px; display:flex; flex-direction:column; gap:10px; overflow:hidden; font-size:12px; }
+  .cp .me { align-self:flex-end; max-width:80%; background:rgba(59,130,208,.18); border-radius:12px 12px 3px 12px; padding:8px 10px; }
+  .cp .ai { max-width:92%; line-height:1.45; }
+  .cp .tool { font-size:11.5px; color:#6b7180; display:flex; gap:6px; align-items:center; }
+  .cp .fold { background:rgba(127,127,127,.12); border-radius:10px; padding:8px 10px; font-size:11.5px; }
+  .cp .fold .fh { display:flex; justify-content:space-between; } .cp .fold em { color:#8a90a0; font-style:normal; }
+  .cp .diff { font-family:ui-monospace,Menlo,monospace; font-size:10.5px; line-height:1.5; margin-top:6px; }
+  .cp .diff .a { background:rgba(48,209,88,.18); } .cp .diff .d { background:rgba(255,66,69,.18); }
+  .cp .perm { border:1px solid var(--orange); border-radius:12px; padding:10px 12px; display:flex; gap:10px; align-items:center; background:rgba(255,255,255,.4); }
+  .screen.matte .cp .perm { background:#21242D; }
+  .cp .perm .cmd { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; }
+  .cp .perm .p { margin-left:auto; display:flex; gap:6px; } .cp .perm .p span { padding:5px 10px; border-radius:12px; font-size:11.5px; font-weight:600; background:rgba(127,127,127,.18); } .cp .perm .p span.a { background:#1e2129; color:#fff; } .screen.matte .cp .perm .p span.a { background:#fff; color:#111; }
+  .cp .compose { margin-top:auto; border-top:1px solid rgba(127,127,127,.18); padding:10px 14px; display:flex; flex-direction:column; gap:6px; }
+  .cp .compose .f { height:34px; border-radius:10px; background:rgba(127,127,127,.12); font-size:12px; color:#8a90a0; display:flex; align-items:center; padding:0 10px; }
+  .cp .compose .row2 { display:flex; gap:10px; font-size:11px; color:#8a90a0; align-items:center; }
+  .cp .compose .row2 .sp { flex:1; } .cp .compose .row2 .send { width:24px; height:24px; border-radius:50%; background:#1e2129; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; } .screen.matte .cp .compose .row2 .send { background:#fff; color:#111; }
+  .legend { position:absolute; left:40px; bottom:90px; width:560px; background:rgba(0,0,0,.72); color:#fff; border-radius:12px; padding:12px 14px; font-size:11.5px; line-height:1.5; z-index:6; }
+  .legend b { color:#8fe3a2; } .legend u { color:#ffb86b; text-decoration:none; }
   .hidden { display:none !important; }
   .cap { font-size:12px; color:var(--chrome-text); opacity:.75; margin-top:10px; }
 </style>
@@ -294,6 +328,31 @@ const STATES = {
     <div class="strip"><i class="on">✦</i><i>📄</i><i>🔔</i><i>▭</i></div>
     <div class="foot"><div class="f">Reply to Claude…</div></div>
   </div>` },
+  "Claude panel, full": { cap: "The side panel as a slim Claude app: sidebar of projects and sessions, the chat, a reply box, and the app's top-right tools. Green = Cove does it. Orange = one click opens the app there.", html: `<div class="cp glass">
+    <div class="sb">
+      <div class="it new">＋ New session</div><div class="it grey">🔍 Search</div>
+      <div class="pj"><span>quoteflow-v3</span><span>⌄</span></div>
+      <div class="it on"><i class="b"></i>Stream A - V3 Current</div><div class="it"><i class="g"></i>Stream B - Communications map…</div><div class="it"><i class="o"></i>Explore floorplan report</div>
+      <div class="pj"><span>notch-island</span><span>⌄</span></div>
+      <div class="it"><i class="b"></i>macOS Dynamic Island menu…</div>
+      <div class="pj"><span>quoteflow-v2</span><span>›</span></div>
+      <div class="pj" style="margin-top:auto"><span>All sessions · 12</span></div>
+    </div>
+    <div class="mn">
+      <div class="tb2"><b>Stream A - V3 Current</b><span style="color:#8a90a0">· main · 2 m 14 s</span><span class="sp"></span>
+        <span class="ic app" title="Plan">☰</span><span class="ic app" title="Diff">±</span><span class="ic app" title="Files">▭</span><span class="ic app" title="Terminal">›_</span><span class="ic dim" title="Browser, in the app">🌐</span><span class="ic dim" title="Artifacts, in the app">⧉</span><span class="ic app" title="Open in Claude">↗</span></div>
+      <div class="body">
+        <div class="me">Add a discount code to the checkout and make sure the tests pass.</div>
+        <div class="ai">On it. Checkout reads the cart total in two places, so I'll add one helper and call it from both.</div>
+        <div class="tool">✓ Read checkout.ts, cart.ts &nbsp;·&nbsp; ✓ Edit checkout.ts &nbsp;·&nbsp; ✓ npm test, 42 passed</div>
+        <div class="fold"><div class="fh"><b>checkout.ts</b><em>+14 −3 · click to open the diff</em></div><div class="diff"><div class="d">- const total = subtotal + shipping</div><div class="a">+ const total = subtotal - applyCode(code, subtotal) + shipping</div></div></div>
+        <div class="perm"><span>⚠</span><div><div style="font-weight:600">Claude wants to run</div><div class="cmd">npm run check</div></div><div class="p"><span class="a">Allow</span><span>Always</span><span>Deny</span></div></div>
+        <div class="ai" style="color:#8a90a0">Editing cart.ts…</div>
+      </div>
+      <div class="compose"><div class="f">Reply to Claude…</div><div class="row2"><span>⏎ send</span><span>·</span><span>goes through the hook while Claude waits, else typed into the app</span><span class="sp"></span><span class="send">↑</span></div></div>
+    </div>
+    </div>
+    <div class="legend"><b>Cove does:</b> list every project and session · read the whole chat · reply · Allow / Always / Deny, questions, plans · steps and diffs · Plan, Diff, Files, Terminal · pin, rename, search · new session (opens the app on it).<br><u>App only, one click:</u> stop Claude mid-turn · model and effort · slash commands · attachments · Browser, Artifacts, Side chat, Background tasks, Simulator, Remote Control.</div>` },
   "Settings": { cap: "⌘, from the island or the menu. Click a section on the left to see its options. Shown: Claude Code. The other sections are in the buttons that follow.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
     <div class="nav"><div>⚙ General</div><div class="on">✦ Claude Code</div><div>▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
     <div class="main"><h2>Claude Code</h2>
