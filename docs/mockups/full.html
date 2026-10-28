@@ -130,6 +130,38 @@
   .set .tl { position:absolute; top:12px; left:12px; display:flex; gap:7px; } .set .tl i { width:12px; height:12px; border-radius:50%; display:inline-block; }
   .set .title { position:absolute; top:11px; left:0; right:0; text-align:center; font-size:12.5px; color:#8a90a0; }
   .set .kbd { font-family:ui-monospace,Menlo,monospace; font-size:11px; background:#eee; padding:2px 6px; border-radius:4px; } .screen.matte .set .kbd { background:#16181F; }
+  /* menu bar panel */
+  .mb { position:absolute; top:36px; right:150px; width:520px; height:auto; min-height:240px; border-radius:16px; padding:16px 18px; display:flex; align-items:stretch; gap:18px; z-index:5; box-shadow:0 20px 60px rgba(0,0,0,.45); overflow:visible; }
+  .mb .sw { align-content:start; }
+  .mb.glass { border-top:1px solid rgba(255,255,255,.55); }
+  .mb .sw { display:grid; grid-template-columns:repeat(4,1fr); gap:10px 8px; flex:1; }
+  .mb .s { display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10.5px; color:#6b7180; text-align:center; }
+  .mb .s i { width:46px; height:46px; border-radius:50%; background:rgba(127,127,127,.18); display:flex; align-items:center; justify-content:center; font-style:normal; font-size:17px; color:#1e2129; }
+  .mb .s i.on { background:var(--accent); color:#fff; }
+  .screen.matte .mb .s i { color:#E3E7EF; }
+  .mb .hd { grid-column:1 / -1; font-size:10.5px; color:#8a90a0; letter-spacing:.4px; margin-top:4px; }
+  .mb .list { width:150px; border-left:1px solid rgba(127,127,127,.2); padding-left:14px; font-size:12.5px; display:flex; flex-direction:column; gap:10px; }
+  .mb .list div { display:flex; gap:8px; align-items:center; }
+  .mbicon { position:absolute; top:0; right:238px; width:22px; height:32px; display:flex; align-items:center; justify-content:center; z-index:2; }
+  .mbicon i { width:16px; height:7px; border-radius:4px; background:#fff; display:block; }
+  /* side panel */
+  .side { position:absolute; top:40px; right:0; bottom:0; width:380px; border-radius:16px 0 0 0; padding:16px 18px 16px 18px; z-index:5; box-shadow:-20px 0 60px rgba(0,0,0,.35); display:flex; flex-direction:column; gap:10px; }
+  .side.glass { border-left:1px solid rgba(255,255,255,.55); border-top:1px solid rgba(255,255,255,.55); }
+  .side .hdr { display:flex; align-items:center; gap:8px; }
+  .side .hdr b { font-size:14px; } .side .hdr .x { margin-left:auto; color:#8a90a0; font-size:12px; }
+  .side .sub { font-size:11.5px; color:#6b7180; }
+  .side .box { background:rgba(127,127,127,.12); border-radius:10px; padding:10px 12px; font-size:12px; }
+  .side .box .k { font-size:10.5px; color:#8a90a0; margin-bottom:3px; }
+  .side .steps div { display:flex; gap:8px; font-size:12px; padding:3px 0; color:#1e2129; } .screen.matte .side .steps div { color:#E3E7EF; }
+  .side .steps span { color:#8a90a0; width:16px; }
+  .side .file { background:rgba(127,127,127,.12); border-radius:10px; overflow:hidden; font-size:11.5px; }
+  .side .file .fh { display:flex; justify-content:space-between; padding:7px 10px; border-bottom:1px solid rgba(127,127,127,.15); } .side .file .fh em { color:#8a90a0; font-style:normal; }
+  .side .diff { font-family:ui-monospace,Menlo,monospace; font-size:10.5px; padding:6px 10px; line-height:1.5; }
+  .side .diff .a { background:rgba(48,209,88,.18); } .side .diff .d { background:rgba(255,66,69,.18); }
+  .side .strip { position:absolute; right:10px; top:60px; display:flex; flex-direction:column; gap:14px; color:#8a90a0; font-size:13px; align-items:center; }
+  .side .strip i { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-style:normal; } .side .strip i.on { background:#1e2129; color:#fff; } .screen.matte .side .strip i.on { background:#fff; color:#111; }
+  .side .foot { margin-top:auto; display:flex; gap:8px; }
+  .side .foot .f { flex:1; height:28px; border-radius:8px; background:rgba(127,127,127,.12); font-size:12px; color:#8a90a0; display:flex; align-items:center; padding:0 10px; }
   .hidden { display:none !important; }
   .cap { font-size:12px; color:var(--chrome-text); opacity:.75; margin-top:10px; }
 </style>
@@ -209,6 +241,25 @@ const STATES = {
     <div class="w sl"><h4>Display</h4><div class="tr"><i></i><b></b></div></div></div>
     <div class="grid8">${ICONS.slice(0,32).map(i=>`<div class="app"><img src="${src(i)}"><span>${i.name}</span></div>`).join("")}</div>
     <div class="pager"><i class="on"></i><i></i><i></i></div></div>` },
+  "Menu bar": { cap: "Click Cove's menu-bar icon: round switches (blue when on), Cove's pieces to turn on or off, and a short list on the right. Replaces today's long submenu.", html: `<div class="mbicon"><i></i></div><div class="mb glass">
+    <div class="sw">
+      <div class="s"><i class="on">◐</i>Dark mode</div><div class="s"><i>🌙</i>Do Not Disturb</div><div class="s"><i class="on">☕</i>Keep awake</div><div class="s"><i>🔇</i>Mute</div>
+      <div class="s"><i class="on">📶</i>Wi-Fi</div><div class="s"><i>⊞</i>Launchpad</div><div class="s"><i>✦</i>Glass</div><div class="s"><i>📸</i>Screenshot</div>
+      <div class="hd">COVE PIECES</div>
+      <div class="s"><i class="on">✦</i>Claude</div><div class="s"><i class="on">▭</i>Island</div><div class="s"><i class="on">⊞</i>Launchpad</div><div class="s"><i>👁</i>Peeks</div>
+    </div>
+    <div class="list"><div>⚙ Settings…</div><div>↻ Check for Updates…</div><div>🔒 Lock screen</div><div>🗑 Empty Trash</div><div style="margin-top:auto">⏻ Quit Cove</div></div>
+  </div>` },
+  "Claude side panel": { cap: "Slides in from the right edge (click the Claude card, or ⌃⌥C). What you asked, every step, the files changed with their diffs. Strip on the edge: sessions, files, replies.", html: `<div class="side glass">
+    <div class="hdr"><span style="color:var(--accent)">▞</span><b>Stream A - V3 Current</b><span class="x">⏱ 2 m 14 s · ✕</span></div>
+    <div class="sub">quoteflow-v3 · feat/b2-phone-job-page · $5.52 · 10 % context</div>
+    <div class="box"><div class="k">YOU ASKED</div>Add a discount code to the checkout and make sure the tests pass.</div>
+    <div class="box steps"><div class="k">STEPS</div><div><span>✓</span>Read checkout.ts, cart.ts</div><div><span>✓</span>Edit checkout.ts</div><div><span>✓</span>Ran npm test · 42 passed</div><div><span>●</span>Editing cart.ts</div></div>
+    <div class="file"><div class="fh"><b>checkout.ts</b><em>+14 −3</em></div><div class="diff"><div class="d">- const total = subtotal + shipping</div><div class="a">+ const discount = applyCode(code, subtotal)</div><div class="a">+ const total = subtotal - discount + shipping</div></div></div>
+    <div class="file"><div class="fh"><b>cart.ts</b><em>+6 −1</em></div><div class="diff"><div class="a">+ export function applyCode(code: string, amount: number) {</div></div></div>
+    <div class="strip"><i class="on">✦</i><i>📄</i><i>🔔</i><i>▭</i></div>
+    <div class="foot"><div class="f">Reply to Claude…</div></div>
+  </div>` },
   "Settings": { cap: "⌘, from the island or the menu. One window, every option in its section. The menu bar menu shrinks to four items.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
     <div class="side"><div>⚙ General</div><div class="on">✦ Claude Code</div><div>▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
     <div class="main"><h2>Claude Code</h2>
