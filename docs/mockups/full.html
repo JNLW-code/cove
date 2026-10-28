@@ -119,8 +119,8 @@
   /* settings window */
   .set { position:absolute; left:380px; top:150px; width:700px; height:520px; border-radius:12px; background:#f6f6f8; box-shadow:0 30px 80px rgba(0,0,0,.5); display:flex; overflow:hidden; z-index:5; font-size:13px; }
   .screen.matte .set { background:#1e2129; color:#E3E7EF; }
-  .set .side { width:200px; background:#ececf0; padding:40px 10px 10px; } .screen.matte .set .side { background:#16181F; }
-  .set .side div { padding:7px 10px; border-radius:7px; margin-bottom:2px; display:flex; gap:8px; align-items:center; font-size:12.5px; } .set .side div.on { background:var(--accent); color:#fff; }
+  .set .nav { width:200px; background:#ececf0; padding:40px 10px 10px; } .screen.matte .set .nav { background:#16181F; }
+  .set .nav div { padding:7px 10px; border-radius:7px; margin-bottom:2px; display:flex; gap:8px; align-items:center; font-size:12.5px; } .set .nav div.on { background:var(--accent); color:#fff; }
   .set .main { flex:1; padding:40px 28px; }
   .set .main h2 { font-size:15px; font-weight:700; margin-bottom:14px; }
   .set .g { font-size:10.5px; letter-spacing:.5px; color:#8a90a0; margin:14px 0 6px; }
@@ -162,6 +162,17 @@
   .side .strip i { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-style:normal; } .side .strip i.on { background:#1e2129; color:#fff; } .screen.matte .side .strip i.on { background:#fff; color:#111; }
   .side .foot { margin-top:auto; display:flex; gap:8px; }
   .side .foot .f { flex:1; height:28px; border-radius:8px; background:rgba(127,127,127,.12); font-size:12px; color:#8a90a0; display:flex; align-items:center; padding:0 10px; }
+  .side .sess { display:flex; gap:6px; }
+  .side .sess div { flex:1; background:rgba(127,127,127,.12); border-radius:9px; padding:6px 8px; font-size:11px; display:flex; align-items:center; gap:6px; }
+  .side .sess div.on { background:rgba(255,255,255,.75); } .screen.matte .side .sess div.on { background:#2a2e38; }
+  .side .sess i { width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none; } .side .sess i.g { background:var(--green); } .side .sess i.o { background:var(--orange); }
+  .side .chat { display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+  .side .me { align-self:flex-end; max-width:85%; background:rgba(59,130,208,.18); border-radius:12px 12px 3px 12px; padding:8px 10px; font-size:12px; }
+  .side .ai { max-width:92%; font-size:12px; line-height:1.4; }
+  .side .edge { position:absolute; right:-4px; top:120px; width:4px; height:120px; border-radius:2px; background:rgba(255,255,255,.6); }
+  .hovhint { position:absolute; right:0; top:200px; width:6px; height:140px; border-radius:3px 0 0 3px; background:rgba(255,255,255,.35); z-index:4; }
+  .hovhint:after { content:"hover here"; position:absolute; right:12px; top:60px; font-size:11px; color:#fff; white-space:nowrap; opacity:.8; }
+  .set .nav .pg { cursor:pointer; }
   .hidden { display:none !important; }
   .cap { font-size:12px; color:var(--chrome-text); opacity:.75; margin-top:10px; }
 </style>
@@ -241,6 +252,26 @@ const STATES = {
     <div class="w sl"><h4>Display</h4><div class="tr"><i></i><b></b></div></div></div>
     <div class="grid8">${ICONS.slice(0,32).map(i=>`<div class="app"><img src="${src(i)}"><span>${i.name}</span></div>`).join("")}</div>
     <div class="pager"><i class="on"></i><i></i><i></i></div></div>` },
+  "Settings: General": { cap: "General: theme, start at login, the Launchpad shortcut and hot corner, updates.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
+    <div class="nav"><div class="on">⚙ General</div><div>✦ Claude Code</div><div>▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
+    <div class="main"><h2>General</h2>
+      <div class="g">LOOK</div><div class="opt2"><span>Theme</span><span><span class="kbd">Glass</span> <span class="kbd" style="opacity:.5">Dark</span> <span class="kbd" style="opacity:.5">Light</span> <span class="kbd" style="opacity:.5">macOS</span></span></div>
+      <div class="g">STARTUP</div><div class="opt2"><span>Start Cove at login</span><span class="sw on"></span></div><div class="opt2"><span>Show the welcome window again</span><span class="kbd">Show</span></div>
+      <div class="g">SHORTCUTS</div><div class="opt2"><span>Launchpad</span><span class="kbd">⌘4</span></div><div class="opt2"><span>Claude panel</span><span class="kbd">⌃⌥C</span></div><div class="opt2"><span>Top-left hot corner opens the Launchpad</span><span class="sw"></span></div>
+    </div></div>` },
+  "Settings: Island": { cap: "Island: which tiles, their order, peeks and sounds, what the pill shows.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
+    <div class="nav"><div>⚙ General</div><div>✦ Claude Code</div><div class="on">▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
+    <div class="main"><h2>Island</h2>
+      <div class="g">TILES</div><div class="opt2"><span>Weather<small>Sydney · change city</small></span><span class="sw on"></span></div><div class="opt2"><span>Calendar<small>opens Google Calendar in Chrome</small></span><span class="sw on"></span></div><div class="opt2"><span>Music<small>Spotify or Apple Music</small></span><span class="sw on"></span></div><div class="opt2"><span>Timer</span><span class="sw on"></span></div><div class="opt2"><span>Clipboard</span><span class="sw"></span></div><div class="opt2"><span>Shelf</span><span class="sw on"></span></div>
+      <div class="g">PEEKS</div><div class="opt2"><span>Apps opening<small>Slack, WhatsApp, Claude, Chrome, Xcode</small></span><span class="kbd">Choose…</span></div><div class="opt2"><span>Do Not Disturb, charging, battery</span><span class="sw on"></span></div><div class="opt2"><span>Next meeting, 5 min before, with Join</span><span class="sw on"></span></div><div class="opt2"><span>Sound</span><span class="sw"></span></div>
+    </div></div>` },
+  "Settings: Launchpad": { cap: "Launchpad: widgets on or off, the Shortcuts folder, folders by category.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
+    <div class="nav"><div>⚙ General</div><div>✦ Claude Code</div><div>▭ Island</div><div class="on">⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
+    <div class="main"><h2>Launchpad</h2>
+      <div class="g">WIDGETS</div><div class="opt2"><span>Now playing</span><span class="sw on"></span></div><div class="opt2"><span>Weather</span><span class="sw on"></span></div><div class="opt2"><span>Quick toggles<small>Wi-Fi, dark mode, mute</small></span><span class="sw on"></span></div><div class="opt2"><span>Sound, Keyboard, Display sliders</span><span class="sw on"></span></div>
+      <div class="opt2"><span>Shortcuts<small>Every shortcut in your “Cove” folder becomes a button</small></span><span class="sw on"></span></div>
+      <div class="g">GRID</div><div class="opt2"><span>Start in folders by category</span><span class="sw"></span></div><div class="opt2"><span>Icons follow the theme (tinted)</span><span class="sw"></span></div>
+    </div></div>` },
   "Menu bar": { cap: "Click Cove's menu-bar icon: round switches (blue when on), Cove's pieces to turn on or off, and a short list on the right. Replaces today's long submenu.", html: `<div class="mbicon"><i></i></div><div class="mb glass">
     <div class="sw">
       <div class="s"><i class="on">◐</i>Dark mode</div><div class="s"><i>🌙</i>Do Not Disturb</div><div class="s"><i class="on">☕</i>Keep awake</div><div class="s"><i>🔇</i>Mute</div>
@@ -250,18 +281,21 @@ const STATES = {
     </div>
     <div class="list"><div>⚙ Settings…</div><div>↻ Check for Updates…</div><div>🔒 Lock screen</div><div>🗑 Empty Trash</div><div style="margin-top:auto">⏻ Quit Cove</div></div>
   </div>` },
-  "Claude side panel": { cap: "Slides in from the right edge (click the Claude card, or ⌃⌥C). What you asked, every step, the files changed with their diffs. Strip on the edge: sessions, files, replies.", html: `<div class="side glass">
-    <div class="hdr"><span style="color:var(--accent)">▞</span><b>Stream A - V3 Current</b><span class="x">⏱ 2 m 14 s · ✕</span></div>
-    <div class="sub">quoteflow-v3 · feat/b2-phone-job-page · $5.52 · 10 % context</div>
-    <div class="box"><div class="k">YOU ASKED</div>Add a discount code to the checkout and make sure the tests pass.</div>
+  "Right edge, closed": { cap: "Panel closed: nothing on screen but a thin handle. Rest the mouse on the right edge and the panel slides in. A dot on the handle means Claude said something new.", html: `<div class="hovhint"></div>` },
+  "Claude side panel": { cap: "Slid in from the right edge (hover, click to pin, Esc closes, ⌃⌥C from anywhere). Sessions across the top, the conversation, steps, files with diffs, a reply box. Open in Claude for anything else.", html: `<div class="side glass">
+    <div class="sess"><div class="on"><i></i>Stream A</div><div><i class="g"></i>Stream B</div><div><i class="o"></i>notch-island</div><div style="flex:0 0 28px;justify-content:center">＋</div></div>
+    <div class="hdr"><b>Stream A - V3 Current</b><span class="x">⏱ 2 m 14 s · 📌 · ✕</span></div>
+    <div class="sub">quoteflow-v3 · feat/b2-phone-job-page · $5.52 · 10 % context · <u>Open in Claude</u></div>
+    <div class="chat"><div class="me">Add a discount code to the checkout and make sure the tests pass.</div>
+    <div class="ai">On it. Checkout reads the cart total in two places, so I'll add one helper and call it from both.</div></div>
     <div class="box steps"><div class="k">STEPS</div><div><span>✓</span>Read checkout.ts, cart.ts</div><div><span>✓</span>Edit checkout.ts</div><div><span>✓</span>Ran npm test · 42 passed</div><div><span>●</span>Editing cart.ts</div></div>
     <div class="file"><div class="fh"><b>checkout.ts</b><em>+14 −3</em></div><div class="diff"><div class="d">- const total = subtotal + shipping</div><div class="a">+ const discount = applyCode(code, subtotal)</div><div class="a">+ const total = subtotal - discount + shipping</div></div></div>
     <div class="file"><div class="fh"><b>cart.ts</b><em>+6 −1</em></div><div class="diff"><div class="a">+ export function applyCode(code: string, amount: number) {</div></div></div>
     <div class="strip"><i class="on">✦</i><i>📄</i><i>🔔</i><i>▭</i></div>
     <div class="foot"><div class="f">Reply to Claude…</div></div>
   </div>` },
-  "Settings": { cap: "⌘, from the island or the menu. One window, every option in its section. The menu bar menu shrinks to four items.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
-    <div class="side"><div>⚙ General</div><div class="on">✦ Claude Code</div><div>▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
+  "Settings": { cap: "⌘, from the island or the menu. Click a section on the left to see its options. Shown: Claude Code. The other sections are in the buttons that follow.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
+    <div class="nav"><div>⚙ General</div><div class="on">✦ Claude Code</div><div>▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
     <div class="main"><h2>Claude Code</h2>
       <div class="g">THIS MAC</div><div class="opt2"><span>Hooks<small>Set up · 11 events in ~/.claude/settings.json</small></span><span class="sw on"></span></div>
       <div class="opt2"><span>Servers over SSH<small>root@203.0.113.4 · tunnel on port 47925</small></span><span class="kbd">Add…</span></div>
