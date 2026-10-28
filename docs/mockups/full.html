@@ -42,8 +42,19 @@
   .screen.matte .tile, .screen.matte .card, .screen.matte .rows { background:#21242D !important; color:#E3E7EF; }
   .screen.matte .muted, .screen.matte .sub, .screen.matte .right, .screen.matte .row .muted { color:#A4ABBA !important; }
   .island { position:absolute; top:0; left:50%; transform:translateX(-50%); width:662px; border-radius:0 0 35px 35px; box-shadow:0 24px 60px rgba(0,0,0,.4); padding:44px 23px 14px; z-index:5; }
-  .tools { position:absolute; top:7px; left:24px; display:flex; gap:12px; font-size:12px; opacity:.65; }
-  .tools.r { left:auto; right:24px; gap:6px; } .tools.r img { width:16px; height:16px; border-radius:4px; }
+  .tabs { position:absolute; top:6px; left:22px; display:flex; gap:2px; background:rgba(127,127,127,.14); border-radius:9px; padding:2px; font-size:11.5px; }
+  .tabs span { padding:3px 9px; border-radius:7px; color:#6b7180; } .tabs span.on { background:rgba(255,255,255,.85); color:#1e2129; font-weight:600; }
+  .screen.matte .tabs span.on { background:#fff; color:#111; }
+  .status { position:absolute; top:7px; right:24px; display:flex; gap:10px; align-items:center; font-size:11.5px; color:#6b7180; }
+  .status .st { display:flex; align-items:center; gap:6px; padding:3px 9px; border-radius:8px; background:rgba(127,127,127,.14); color:#1e2129; }
+  .screen.matte .status .st { color:#E3E7EF; }
+  .status .st i { width:7px; height:7px; border-radius:50%; background:var(--accent); display:inline-block; } .status .st i.o { background:var(--orange); }
+  .tiles.grid { flex-wrap:wrap; width:620px; margin:8px auto 0; }
+  .shelfpage { margin-top:8px; background:rgba(255,255,255,.5); border-radius:15px; padding:14px 18px; min-height:120px; }
+  .screen.matte .shelfpage { background:#21242D; }
+  .shelfpage .files { display:flex; gap:16px; } .shelfpage .f { width:64px; text-align:center; font-size:10.5px; color:#6b7180; }
+  .shelfpage .f i { display:flex; width:52px; height:52px; margin:0 auto 5px; border-radius:11px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.2); align-items:center; justify-content:center; font-style:normal; font-weight:700; font-size:10px; color:#555; }
+  .shelfpage .hint { font-size:11px; color:#8a90a0; margin-top:12px; }
   .card { background:rgba(255,255,255,.55); border:1px solid var(--orange); border-radius:15px; padding:14px 20px; display:flex; gap:16px; align-items:flex-start; }
   .card.done { border-color:var(--green); }
   .dots { width:32px; height:32px; display:grid; grid-template-columns:repeat(5,1fr); gap:2px; flex:none; margin-top:2px; }
@@ -146,8 +157,9 @@ const byName = Object.fromEntries(ICONS.map(i => [i.name, i]));
 const src = i => "data:image/png;base64," + i.png;
 const pick = (n, i) => byName[n] || ICONS[i % ICONS.length];
 document.getElementById("dock").innerHTML = ["Finder","Google Chrome","Claude","Calendar","Messages","Mail","Spotify","Terminal"].map((n,i) => `<img src="${src(pick(n, i*3))}">`).join("");
-const toolsL = `<div class="tools">⚙ &nbsp;✓ &nbsp;🔇 &nbsp;◐</div>`;
-const toolsR = `<div class="tools r">${["Google Chrome","Claude","Calendar","Messages","Terminal"].map((n,i)=>`<img src="${src(pick(n,i*5))}">`).join("")}</div>`;
+const tabs = (on) => `<div class="tabs">${["Home","Tiles","Shelf"].map(t=>`<span class="${t===on?'on':''}">${t}</span>`).join("")}</div>`;
+const status = (needs) => `<div class="status"><span class="st"><i class="${needs?'o':''}"></i>${needs ? '1 needs you · 1 running' : '2 running'}</span><span>⚙</span></div>`;
+const toolsL = tabs("Home"), toolsR = status(true);
 const rows = (first) => `<div class="rows">
   <div class="row">${first ? '<span class="n">1</span>' : ''}<b>Stream A - V3 Current</b><span class="muted">${first ? 'Needs you' : 'Reading'}</span><span class="right">⌃ 2 · $5.52 · 10%</span></div>
   <div class="row"><b>Stream B - Communications map doc…</b><span class="muted">Done · 30 s</span><span class="right">$2.34 · 12%</span></div>
@@ -167,13 +179,24 @@ const STATES = {
     <div class="card">${dots()}<div style="min-width:0;flex:1"><h3>Claude asks · Layout</h3><div class="sub" style="font-size:12.5px;color:inherit;margin-bottom:6px">Which layout should the settings page use?</div>
     <div class="opts"><div class="opt"><b>Tabs</b><span>One tab per section, like System Settings</span></div><div class="opt"><b>One page</b><span>Everything on one scrolling page</span></div><div class="opt"><b>Sidebar</b><span>Sections down the left, content on the right</span></div></div>
     <div class="reply"><div class="f">Or type an answer…</div></div><div class="sub">Stream A - V3 Current · quoteflow-v3 · feat/b2-phone-job-page</div></div></div>${rows(true)}</div>` },
-  "Done + reply": { cap: "Done card: Claude's last words, what the turn cost, and a reply box. Return sends it straight to Claude.", html: `<div class="island glass">${toolsL}${toolsR}
+  "Done + reply": { cap: "Done card: Claude's last words, what the turn cost, and a reply box. Return sends it straight to Claude.", html: `<div class="island glass">${tabs("Home")}${status(false)}
     <div class="card done">${dots()}<div style="min-width:0;flex:1"><h3>Done in 4 m 12 s</h3><div class="cmd" style="font-family:inherit;font-size:12.5px">The phone job page now shows one page per role. Tests pass. Want me to wire the office cards next?</div><div class="sub">2 files changed · 3 not committed · $0.82 this turn</div><div class="reply"><div class="f">Reply to Claude…</div><div class="s">↑</div></div></div></div>${rows(false)}${tiles}</div>` },
-  "Tiles + shelf": { cap: "Nothing needs you: rows and tiles. The shelf tile holds files you drop on the notch; drag them out anywhere.", html: `<div class="island glass">${toolsL}${toolsR}${rows(false)}
+  "Home, quiet": { cap: "Home page, nothing needs you: the session rows and your four tiles. Top left: pages. Top right: Claude's status, click it to jump to the card.", html: `<div class="island glass">${tabs("Home")}${status(false)}${rows(false)}
     <div class="tiles"><div class="tile"><img class="art" src="${src(pick('Music',4))}"><div class="t">Low Tide</div><div class="m">Nova Lane</div><div class="m" style="margin-top:22px">◀◀ &nbsp;❚❚ &nbsp;▶▶</div></div>
     <div class="tile"><div class="big">16°</div><div class="m">Sydney</div><div class="m">H 17° L 12°</div></div>
     <div class="tile"><div class="t">Shelf</div><div class="shelf"><i>PDF</i><i>JPG</i><i>XLS</i></div><div class="m" style="margin-top:6px">Drop files on the notch</div></div>
     <div class="tile small"><div class="big" style="font-size:20px;text-align:center">25:00</div><div style="margin:8px auto 0;width:28px;height:28px;border-radius:50%;background:rgba(127,127,127,.25);display:flex;align-items:center;justify-content:center;font-size:11px">▶</div></div></div></div>` },
+  "Tiles page": { cap: "Tiles page: every tile, two rows, drag to arrange, red minus to hide. Clipboard and to-do are new.", html: `<div class="island glass">${tabs("Tiles")}${status(false)}
+    <div class="tiles grid"><div class="tile"><img class="art" src="${src(pick('Music',4))}"><div class="t">Low Tide</div><div class="m">Nova Lane</div><div class="m" style="margin-top:22px">◀◀ &nbsp;❚❚ &nbsp;▶▶</div></div>
+    <div class="tile"><div class="big">16°</div><div class="m">Sydney</div><div class="m">H 17° L 12°</div></div>
+    <div class="tile"><div class="m" style="font-size:10px;font-weight:700;letter-spacing:.6px">THU</div><div class="big">29</div><div class="t" style="position:absolute;left:54px;top:14px">Site visit</div><div class="m" style="position:absolute;left:54px;top:34px">Thu 29 Oct · 1:45 pm</div></div>
+    <div class="tile small"><div class="big" style="font-size:20px;text-align:center">25:00</div><div style="margin:8px auto 0;width:28px;height:28px;border-radius:50%;background:rgba(127,127,127,.25);display:flex;align-items:center;justify-content:center;font-size:11px">▶</div></div>
+    <div class="tile"><div class="t">Clipboard</div><div class="m" style="margin-top:6px;font-family:ui-monospace,Menlo,monospace;font-size:11px">git push origin main</div><div class="m" style="margin-top:4px">Copied 2 min ago · 6 more</div></div>
+    <div class="tile"><div class="t">To-do</div><div class="m" style="margin-top:6px">☐ Call supplier 4:30</div><div class="m">☐ Send Brisbane quote</div><div class="m">☑ Book site visit</div></div>
+    <div class="tile"><div class="t">Shelf</div><div class="shelf"><i>PDF</i><i>JPG</i><i>XLS</i></div><div class="m" style="margin-top:6px">3 files</div></div>
+    <div class="tile small"><div class="m" style="text-align:center;margin-top:6px">⊞</div><div class="m" style="text-align:center;font-size:10px;margin-top:8px">Launchpad<br>⌘4</div></div></div></div>` },
+  "Shelf page": { cap: "Shelf page: files dropped on the notch. Drag any of them into a Finder window, an email or a Claude message. Option-drop converts (JPEG, PNG, PDF).", html: `<div class="island glass">${tabs("Shelf")}${status(false)}
+    <div class="shelfpage"><div class="files"><div class="f"><i>PDF</i>Quote 3372.pdf</div><div class="f"><i>JPG</i>IMG_2048.jpg</div><div class="f"><i>XLS</i>Jobs Oct.xlsx</div><div class="f"><i>PNG</i>mockup.png</div></div><div class="hint">Drop files on the notch to keep them here. Drag them out anywhere. ⌥ while dropping: get JPEG, PNG or PDF.</div></div></div>` },
   "Pill": { cap: "Notch closed, one session working: the pill, 0.2 % CPU.", html: `<div class="pillc"><span><span class="g">${Array.from({length:25},(_,i)=>`<i class="${[6,7,12].includes(i)?'on':''}"></i>`).join("")}</span>Reading</span><span>Stream A - V3… <span class="cnt">2</span></span></div>` },
   "Meeting peek": { cap: "Five minutes before your next meeting. Join opens the link in Chrome.", html: `<div class="peek">Site visit · 5 min<small>Google Meet</small><span class="b g">Join</span></div>` },
   "Update peek": { cap: "A new Cove is ready. Click installs and relaunches in about four seconds. No Sparkle window.", html: `<div class="peek">Cove 0.7 ready<small>installs in 4 s</small><span class="b">Install</span></div>` },
@@ -195,6 +218,7 @@ const STATES = {
       <div class="opt2"><span>Always list<small>3 commands allowed this session</small></span><span class="kbd">Clear</span></div>
       <div class="opt2"><span>Wait for me before Claude asks in the app<small>60 s, unless the Mac is idle</small></span><span class="sw on"></span></div>
       <div class="g">ROWS</div><div class="opt2"><span>Show cost and context per session</span><span class="sw on"></span></div><div class="opt2"><span>Show git badges</span><span class="sw on"></span></div>
+      <div class="g">TOP BAR</div><div class="opt2"><span>Claude status on the right<small>"1 needs you · 1 running", click to open the card</small></span><span class="sw on"></span></div>
     </div></div>` },
 };
 const stage = document.getElementById("stage"), cap = document.getElementById("cap"), seg = document.getElementById("states");
