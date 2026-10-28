@@ -369,7 +369,7 @@ final class IslandController: NSObject {
     /// Allow or Deny from a button or shortcut, on the island's card or the side panel's. Ignored for 400 ms after
     /// a card appears or moves on. `seen` is the panel's own "scrolled to the end" for a long command; the island's
     /// card tracks that in the model.
-    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil, seen: Bool? = nil) {
+    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil, seen: Bool? = nil, always: Bool = false) {
         let onIsland = island.displayedCard?.id == card.id
         let onPanel = island.panelOpen && island.panelSession?.id == card.sessionID && island.claude.card(for: island.panelSession!)?.id == card.id
         guard onIsland || onPanel else { return }
@@ -378,8 +378,9 @@ final class IslandController: NSObject {
         guard !guarded else { return }
         if allow, !card.isPlan, Island.isLong(card.command), !(seen ?? island.claude.frontCardFullySeen) { return }
         haptic()
+        if allow, always { island.claude.addAlways(card) }
         island.claude.answer(card, allow: allow, message: message)
-        let word = card.isPlan ? (allow ? "Plan approved" : "Keep planning") : (allow ? "Allowed" : "Denied")
+        let word = card.isPlan ? (allow ? "Plan approved" : "Keep planning") : (allow ? (always ? "Allowed, and from now on" : "Allowed") : "Denied")
         island.claude.session(card.sessionID)?.lastAnswerWord = word
         let content = card.isPlan
             ? (allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: word, second: nil)
@@ -409,7 +410,8 @@ final class IslandController: NSObject {
         haptic()
         island.replyingTo = nil; island.notingFor = nil
         let previous = NSWorkspace.shared.frontmostApplication
-        if island.claude.replyThroughHook(session, text: trimmed) {
+        // A slash command (/model, /clear, …) only means something to the app itself, never to the waiting hook.
+        if !trimmed.hasPrefix("/"), island.claude.replyThroughHook(session, text: trimmed) {
             Log.app.notice("Reply delivered through the Stop hook")
             island.replyStatus = "Sent"
             collapse()

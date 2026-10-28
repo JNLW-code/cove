@@ -119,9 +119,12 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             submenu("Widgets", widgets),
         ]))
 
+        let always = island.claude.alwaysCount
         menu.addItem(submenu("Claude Panel", [
             item("Open  (\(island.hotKeyPanel))", #selector(togglePanel), on: island.panelOpen),
             item("Change Shortcut…", #selector(recordPanelShortcut)),
+            .separator(),
+            item(always == 0 ? "No Always rules" : "Clear Always Rules (\(always))", #selector(clearAlways), enabled: always > 0),
         ]))
 
         menu.addItem(.separator())
@@ -301,6 +304,10 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller?.sidePanel.toggle()
     }
 
+    @objc private func clearAlways() {
+        island.claude.clearAlways()
+    }
+
     private func recordShortcut(title: String, key: String, default combo: HotKeys.Combo) {
         let alert = NSAlert()
         alert.messageText = title
@@ -370,6 +377,9 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "launchpad.demo": island.music = Demo.track; island.weather = Demo.weather   // sample widgets without Spotify or Music
         case "update.check": updater?.checkForUpdates()
         case "panel.toggle": controller.sidePanel.toggle()
+        case "panel.tab":   // the next tab, round and round
+            let all = PanelTab.allCases
+            island.panelTab = all[((all.firstIndex(of: island.panelTab) ?? 0) + 1) % all.count]
         case "panel.next":   // the session after the shown one, in rail order
             let all = SessionRail.groups(island.claude.sessions).flatMap { $0 }
             if let current = island.panelSession, let index = all.firstIndex(where: { $0.id == current.id }), !all.isEmpty {
@@ -386,8 +396,10 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if let lines = setup?.apply(SetupChoices()) { for line in lines { Log.app.notice("Setup result: \(line, privacy: .public)") } }
         case "test.update": updater?.checkInBackground()   // silent check against COVE_FEED, installs and relaunches
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
-        case "test.panel.allow", "test.panel.deny":   // the card the panel shows, as if its button were pressed (long command counted as read)
-            if let s = island.panelSession, let card = island.claude.card(for: s) { controller.answer(card, allow: command.hasSuffix("allow"), seen: true) }
+        case "test.panel.allow", "test.panel.deny", "test.panel.always":   // the card the panel shows, as if its button were pressed (long command counted as read)
+            if let s = island.panelSession, let card = island.claude.card(for: s) {
+                controller.answer(card, allow: !command.hasSuffix("deny"), seen: true, always: command.hasSuffix("always"))
+            }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }
         case "test.panel.reply": if let s = island.panelSession { controller.sendReply("test reply from the panel", to: s) }

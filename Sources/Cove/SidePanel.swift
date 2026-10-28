@@ -28,6 +28,9 @@ final class SidePanelController {
     private var previous: NSRunningApplication?
     private let reader = ChatReader()
     private var screenFrame = NSRect.zero
+    /// Watches the shown session's transcript while the panel is open, so new rows show without waiting for a hook event.
+    private var watcher: DispatchSourceFileSystemObject?
+    private var watchedPath: String?
 
     nonisolated(unsafe) private static weak var shared: SidePanelController?
 
@@ -99,6 +102,7 @@ final class SidePanelController {
         if !island.panelOpen {
             island.panelOpen = true
             previous = NSWorkspace.shared.frontmostApplication
+            pickSession()
             panel.setFrame(closedFrame, display: false)
             panel.orderFrontRegardless()
             slide(to: openFrame)
@@ -114,6 +118,8 @@ final class SidePanelController {
         island.panelOpen = false
         setPinned(false)
         removeKeyMonitor()
+        watch(nil)
+        island.panelSessionID = nil   // a rail pick lasts while the panel is open; the next open picks afresh
         let wasKey = panel.isKeyWindow
         panel.makeFirstResponder(nil)
         slide(to: closedFrame) { [weak self] in self?.panel.orderOut(nil) }
@@ -197,9 +203,17 @@ final class SidePanelController {
     private func installKeyMonitor() {
         if keyMonitor == nil {
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                guard event.keyCode == 53, event.window === SidePanelController.shared?.panel else { return event }
-                Task { @MainActor in SidePanelController.shared?.close() }
-                return nil
+                guard let panel = SidePanelController.shared?.panel, event.window === panel else { return event }
+                if event.keyCode == 53 {   // Esc
+                    Task { @MainActor in SidePanelController.shared?.close() }
+                    return nil
+                }
+                // Shift-Return in the reply box makes a new line (plain Return sends), as in the Claude app.
+                if event.keyCode == 36, event.modifierFlags.contains(.shift), let text = panel.firstResponder as? NSTextView {
+                    text.insertNewlineIgnoringFieldEditor(nil)
+                    return nil
+                }
+                return event
             }
         }
         if clickMonitor == nil {
@@ -237,12 +251,53 @@ final class SidePanelController {
     }
 
     private func load() async {
-        guard let session = island.panelSession, let path = session.transcriptPath, !path.isEmpty else { return }
+        guard let session = island.panelSession, let path = session.transcriptPath, !path.isEmpty else { watch(nil); return }
         let id = session.id
-        let items = await reader.load(session: id, transcript: path)
+        watch(path)
+        let snapshot = await reader.load(session: id, transcript: path)
         guard let s = island.claude.session(id) ?? island.claude.sessions.first(where: { $0.id == id }) else { return }
-        if s.chat != items { s.chat = items }
+        if s.chat != snapshot.items { s.chat = snapshot.items }
+        if s.changes != snapshot.changes { s.changes = snapshot.changes }
+        if s.todos != snapshot.todos { s.todos = snapshot.todos }
+        if s.plan != snapshot.plan { s.plan = snapshot.plan }
+        if s.files != snapshot.files { s.files = snapshot.files }
+        s.chatTurn = snapshot.turn
         s.chatLoaded = true
+    }
+
+    /// A vnode watch on the transcript (no polling): every append refreshes the panel, at most twice a second.
+    private func watch(_ path: String?) {
+        guard path != watchedPath || (path != nil && watcher == nil) else { return }
+        watcher?.cancel()
+        watcher = nil
+        watchedPath = path
+        guard let path, island.panelOpen else { return }
+        let fd = Darwin.open(path, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: [.write, .extend, .rename, .delete], queue: .main)
+        source.setEventHandler { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if source.data.contains(.rename) || source.data.contains(.delete) {
+                    // Rewritten by /compact or /clear: watch the new file after it settles.
+                    self.watcher?.cancel(); self.watcher = nil; self.watchedPath = nil
+                    Task { try? await Task.sleep(for: .milliseconds(800)); self.refresh(now: true) }
+                } else {
+                    self.refresh()
+                }
+            }
+        }
+        source.setCancelHandler { _ = Darwin.close(fd) }
+        source.resume()
+        watcher = source
+    }
+
+    /// Which session a fresh open shows: one that needs James, else the one he last typed into, else the first.
+    /// (The Claude app's window title is always "Claude", so the session in front there cannot be read.)
+    private func pickSession() {
+        if let urgent = island.claude.mostUrgent, urgent.needsAttention { island.panelSessionID = urgent.id; return }
+        let recent = island.claude.sessions.filter { $0.lastPromptAt != nil }.max { $0.lastPromptAt! < $1.lastPromptAt! }
+        island.panelSessionID = recent?.id ?? island.claude.mostUrgent?.id ?? island.claude.sessions.first?.id
     }
 
     func forget(session id: String) {

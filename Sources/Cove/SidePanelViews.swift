@@ -41,6 +41,12 @@ struct SessionRail: View {
                 ForEach(group) { session in avatar(session, p) }
             }
             Spacer(minLength: 0)
+            Button { actions.openMenu() } label: {
+                Image(systemName: "gearshape").font(.system(size: 13, weight: .medium)).foregroundStyle(p.secondaryLabel)
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(PressStyle(radius: 9))
+            .help("Cove menu")
         }
         .padding(.vertical, 10)
         .frame(width: 44)
@@ -107,18 +113,42 @@ struct SessionPane: View {
         VStack(spacing: 0) {
             header(p)
             Rectangle().fill(p.rim).frame(height: 1)
-            HStack {
-                Text("Chat").font(Theme.font(11, .semibold)).foregroundStyle(p.label)
-                    .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(p.tile))
+            HStack(spacing: 2) {
+                ForEach(PanelTab.allCases, id: \.self) { tab in tabButton(tab, p) }
                 Spacer()
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
             Rectangle().fill(p.rim).frame(height: 1)
-            ChatList(session: session, island: island, actions: actions)
-            Rectangle().fill(p.rim).frame(height: 1)
-            PanelCompose(session: session, island: island, actions: actions)
+            switch island.panelTab {
+            case .chat:
+                ChatList(session: session, island: island, actions: actions)
+                Rectangle().fill(p.rim).frame(height: 1)
+                PanelCompose(session: session, island: island, actions: actions)
+            case .plan: PlanTab(session: session, island: island)
+            case .diff: DiffTab(session: session, island: island)
+            case .files: FilesTab(session: session, island: island, actions: actions)
+            case .terminal: TerminalTab(session: session, island: island)
+            }
         }
+    }
+
+    /// Files changed this turn, on the Diff tab.
+    private var diffCount: Int { Set(session.changes.filter { $0.turn == session.chatTurn }.map(\.path)).count }
+
+    private func tabButton(_ tab: PanelTab, _ p: Palette) -> some View {
+        let on = island.panelTab == tab
+        return Button { island.panelTab = tab } label: {
+            HStack(spacing: 4) {
+                Text(tab.title).font(Theme.font(11, on ? .semibold : .regular)).foregroundStyle(on ? p.label : p.secondaryLabel)
+                if tab == .diff, diffCount > 0 {
+                    Text("\(diffCount)").font(Theme.digits(9.5, .semibold)).foregroundStyle(p.allowText)
+                        .padding(.horizontal, 5).frame(height: 14).background(Capsule().fill(p.needsYou))
+                }
+            }
+            .padding(.horizontal, 9).padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(on ? p.tile : .clear))
+        }
+        .buttonStyle(PressStyle(radius: 7))
     }
 
     private func header(_ p: Palette) -> some View {
@@ -416,6 +446,12 @@ struct PanelPermissionCard: View {
                 pill(card.isPlan ? "Approve" : "Allow", island.hotKeyAllow, p.allowBackground, p.allowText, on: allowOn) {
                     actions.answer(card, allow: true, seen: scrolledToEnd)
                 }
+                if !card.isPlan, let words = ClaudeModel.alwaysWords(tool: card.tool, command: card.command) {
+                    pill("Always", "", p.deny, p.label, on: allowOn) {
+                        actions.answer(card, allow: true, seen: scrolledToEnd, always: true)
+                    }
+                    .help("Allow this now, and every \"\(words)\" request for the rest of this session without asking")
+                }
                 pill(card.isPlan ? "Keep planning" : "Deny", island.hotKeyDeny, p.deny, p.label, on: true) {
                     actions.answer(card, allow: false, message: feedback, seen: scrolledToEnd)
                 }
@@ -435,7 +471,7 @@ struct PanelPermissionCard: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Text(title).font(Theme.font(11.5, .semibold))
-                Text(key).font(Theme.font(9.5)).opacity(0.55)
+                if !key.isEmpty { Text(key).font(Theme.font(9.5)).opacity(0.55) }
             }
             .foregroundStyle(fg)
             .padding(.horizontal, 10).frame(height: 24)
@@ -545,7 +581,7 @@ struct PanelQuestionCard: View {
 }
 
 /// The reply box at the bottom of the panel (mockup: a text area with an accent edge, ↑ to send). Return sends,
-/// Option-Return makes a new line. The reply goes down the waiting Stop hook when Claude stopped on a question
+/// Shift-Return makes a new line (handled by the panel's key monitor). The reply goes down the waiting Stop hook when Claude stopped on a question
 /// less than 45 s ago, otherwise Cove types it into the Claude app (`IslandController.sendReply`, as on the island).
 struct PanelCompose: View {
     var session: ClaudeSession
@@ -570,7 +606,7 @@ struct PanelCompose: View {
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(p.island))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(focused ? p.accent.opacity(0.6) : p.rim, lineWidth: 1))
             HStack(spacing: 8) {
-                Text(island.replyStatus ?? (session.replyRequestID != nil ? "Claude is waiting for your answer" : "Return sends · ⌥Return new line"))
+                Text(island.replyStatus ?? (session.replyRequestID != nil ? "Claude is waiting for your answer" : "Return sends · ⇧Return new line · /commands go to the app"))
                     .font(Theme.font(10.5)).foregroundStyle(p.tertiaryLabel).lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
                 Button(action: send) {
@@ -591,5 +627,227 @@ struct PanelCompose: View {
         guard !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         text = ""
         actions.reply(reply, to: session)
+    }
+}
+
+/// Plan tab: Claude's current step list (TodoWrite) and the last plan it wrote (ExitPlanMode).
+struct PlanTab: View {
+    var session: ClaudeSession
+    var island: Island
+
+    var body: some View {
+        let p = island.palette
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 10) {
+                if session.todos.isEmpty, session.plan == nil {
+                    Text(session.chatLoaded ? "No steps or plan in this session yet. Steps appear when Claude keeps a todo list; the plan when it finishes planning." : "Reading…")
+                        .font(Theme.font(12)).foregroundStyle(p.secondaryLabel)
+                }
+                if !session.todos.isEmpty {
+                    Text("Steps").font(Theme.font(11, .semibold)).foregroundStyle(p.secondaryLabel)
+                    ForEach(Array(session.todos.enumerated()), id: \.offset) { _, todo in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: todo.status == "completed" ? "checkmark.circle.fill" : todo.status == "in_progress" ? "circle.dotted.circle" : "circle")
+                                .font(.system(size: 12))
+                                .foregroundStyle(todo.status == "completed" ? p.done : todo.status == "in_progress" ? p.accent : p.tertiaryLabel)
+                                .padding(.top, 2)
+                            Text(todo.content).font(Theme.font(12)).foregroundStyle(todo.status == "completed" ? p.secondaryLabel : p.label)
+                                .strikethrough(todo.status == "completed", color: p.tertiaryLabel)
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+                if let plan = session.plan {
+                    Text("Plan").font(Theme.font(11, .semibold)).foregroundStyle(p.secondaryLabel).padding(.top, session.todos.isEmpty ? 0 : 6)
+                    MarkdownText(text: plan, palette: p)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.vertical, 10)
+        }
+    }
+}
+
+/// Diff tab: every Edit and Write, grouped by turn, latest first; click a file to see the old and new text.
+struct DiffTab: View {
+    var session: ClaudeSession
+    var island: Island
+    @State private var opened: Set<String> = []
+    @State private var closed: Set<String> = []
+
+    var body: some View {
+        let p = island.palette
+        let turns = Dictionary(grouping: session.changes, by: \.turn).keys.sorted(by: >)
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 8) {
+                if session.changes.isEmpty {
+                    Text(session.chatLoaded ? "No edits in this session yet." : "Reading…").font(Theme.font(12)).foregroundStyle(p.secondaryLabel)
+                }
+                ForEach(turns, id: \.self) { turn in
+                    Text(turn == session.chatTurn ? "This turn" : "Turn \(turn)").font(Theme.font(11, .semibold)).foregroundStyle(p.secondaryLabel)
+                        .padding(.top, turn == turns.first ? 0 : 6)
+                    ForEach(session.changes.filter { $0.turn == turn }.reversed()) { change in changeView(change, p) }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.vertical, 10)
+        }
+    }
+
+    private func changeView(_ change: FileChange, _ p: Palette) -> some View {
+        // The latest change of this turn starts open; everything else starts closed.
+        let latest = change.turn == session.chatTurn && session.changes.last?.id == change.id
+        let shown = opened.contains(change.id) || (latest && !closed.contains(change.id))
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                if shown { opened.remove(change.id); closed.insert(change.id) } else { opened.insert(change.id); closed.remove(change.id) }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: shown ? "chevron.down" : "chevron.right").font(.system(size: 9, weight: .semibold)).foregroundStyle(p.tertiaryLabel).frame(width: 10)
+                    Text(change.name).font(Theme.font(11.5, .semibold)).foregroundStyle(p.label).lineLimit(1)
+                    if change.isWrite { Text("new").font(Theme.font(10)).foregroundStyle(p.tertiaryLabel) }
+                    Spacer(minLength: 4)
+                    Text("+\(change.added)").font(Theme.digits(10.5)).foregroundStyle(p.done)
+                    Text("−\(change.removed)").font(Theme.digits(10.5)).foregroundStyle(p.blocked)
+                }
+                .padding(.horizontal, 9).frame(height: 28)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressStyle(radius: 9))
+            .help(change.path)
+            if shown { diffLines(change, p) }
+        }
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(p.tile))
+    }
+
+    private func diffLines(_ change: FileChange, _ p: Palette) -> some View {
+        let removed = change.oldText.isEmpty ? [] : change.oldText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let added = change.newText.isEmpty ? [] : change.newText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let cap = 120
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(removed.prefix(cap).enumerated()), id: \.offset) { _, line in diffLine("−", line, p.blocked, p) }
+            if removed.count > cap { Text("… \(removed.count - cap) more lines").font(Theme.font(10)).foregroundStyle(p.tertiaryLabel).padding(.horizontal, 9) }
+            ForEach(Array(added.prefix(cap).enumerated()), id: \.offset) { _, line in diffLine("+", line, p.done, p) }
+            if added.count > cap { Text("… \(added.count - cap) more lines").font(Theme.font(10)).foregroundStyle(p.tertiaryLabel).padding(.horizontal, 9) }
+        }
+        .padding(.bottom, 6)
+        .textSelection(.enabled)
+    }
+
+    private func diffLine(_ sign: String, _ line: String, _ tint: Color, _ p: Palette) -> some View {
+        Text("\(sign) \(line)").font(Theme.mono(10)).foregroundStyle(p.label)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 9).padding(.vertical, 1)
+            .background(tint.opacity(0.16))
+    }
+}
+
+/// Files tab: everything Claude read or changed this session, latest first. Click opens the file; right-click reveals it.
+struct FilesTab: View {
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+
+    var body: some View {
+        let p = island.palette
+        let files = session.files.sorted { ($0.last ?? .distantPast) > ($1.last ?? .distantPast) }
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 2) {
+                if files.isEmpty {
+                    Text(session.chatLoaded ? "No files read or changed yet." : "Reading…").font(Theme.font(12)).foregroundStyle(p.secondaryLabel)
+                }
+                ForEach(files) { file in
+                    Button { actions.openFile(file.path) } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: file.edits > 0 ? "pencil" : "doc.text").font(.system(size: 11)).foregroundStyle(file.edits > 0 ? p.accent : p.tertiaryLabel).frame(width: 14)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(file.name).font(Theme.font(11.5, .semibold)).foregroundStyle(p.label).lineLimit(1)
+                                Text(file.folder).font(Theme.font(10)).foregroundStyle(p.tertiaryLabel).lineLimit(1).truncationMode(.head)
+                            }
+                            Spacer(minLength: 4)
+                            Text(counts(file)).font(Theme.digits(10.5)).foregroundStyle(p.secondaryLabel).lineLimit(1).fixedSize()
+                        }
+                        .padding(.horizontal, 8).padding(.vertical, 5)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressStyle(radius: 8))
+                    .help(file.path)
+                    .contextMenu {
+                        Button("Reveal in Finder") { actions.revealFile(file.path) }
+                        Button("Copy Path") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(file.path, forType: .string) }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 6).padding(.vertical, 8)
+        }
+    }
+
+    private func counts(_ file: FileTouch) -> String {
+        var parts: [String] = []
+        if file.reads > 0 { parts.append("\(file.reads) read\(file.reads == 1 ? "" : "s")") }
+        if file.edits > 0 { parts.append("\(file.edits) edit\(file.edits == 1 ? "" : "s")") }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// Terminal tab: every command Claude ran, with what it printed (the first part), latest at the bottom.
+struct TerminalTab: View {
+    var session: ClaudeSession
+    var island: Island
+    @State private var expanded: Set<String> = []
+
+    var body: some View {
+        let p = island.palette
+        let calls = session.chat.compactMap { item -> ToolCall? in
+            if case .tool(let call) = item.kind, call.name == "Bash" { return call }
+            return nil
+        }.suffix(100)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if calls.isEmpty {
+                        Text(session.chatLoaded ? "No commands run yet." : "Reading…").font(Theme.font(12)).foregroundStyle(p.secondaryLabel)
+                    }
+                    ForEach(Array(calls), id: \.useID) { call in commandView(call, p) }
+                    Color.clear.frame(height: 1).id("end")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12).padding(.vertical, 10)
+            }
+            .onAppear { proxy.scrollTo("end", anchor: .bottom) }
+            .onChange(of: calls.last?.useID) { proxy.scrollTo("end", anchor: .bottom) }
+        }
+    }
+
+    private func commandView(_ call: ToolCall, _ p: Palette) -> some View {
+        let lines = (call.output ?? "").split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let short = 8
+        let showAll = expanded.contains(call.useID)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: call.failed ? "xmark" : call.done ? "checkmark" : "ellipsis").font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(call.failed ? p.blocked : call.done ? p.done : p.tertiaryLabel).frame(width: 12).padding(.top, 2)
+                Text(call.detail).font(Theme.font(11.5, .semibold)).foregroundStyle(p.label).textSelection(.enabled)
+            }
+            if !lines.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array((showAll ? lines : Array(lines.prefix(short))).enumerated()), id: \.offset) { _, line in
+                        Text(line.isEmpty ? " " : line).font(Theme.mono(10)).foregroundStyle(p.secondaryLabel).lineLimit(showAll ? nil : 3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if lines.count > short {
+                        Button(showAll ? "Less" : "\(lines.count - short) more lines") {
+                            if showAll { expanded.remove(call.useID) } else { expanded.insert(call.useID) }
+                        }
+                        .buttonStyle(.plain).font(Theme.font(10, .medium)).foregroundStyle(p.accent).padding(.top, 3)
+                    }
+                }
+                .padding(8)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.tile))
+            }
+        }
     }
 }

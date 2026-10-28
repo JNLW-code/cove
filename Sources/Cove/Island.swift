@@ -101,6 +101,12 @@ struct BlackParams: Equatable {
     var ear: CGFloat
 }
 
+/// The side panel's tabs.
+enum PanelTab: String, CaseIterable, Sendable {
+    case chat, plan, diff, files, terminal
+    var title: String { rawValue.capitalized }
+}
+
 /// Everything the island shows. Views read it; the controller and data sources write it.
 @MainActor
 @Observable
@@ -171,7 +177,9 @@ final class Island {
     var panelPinned = false
     /// The session the panel shows; nil means the most urgent one.
     var panelSessionID: String?
-    /// The session the panel shows: the chosen one if it still exists, else the most urgent, else the first.
+    /// Which tab the panel shows.
+    var panelTab: PanelTab = .chat
+    /// The session the panel shows: the chosen one if it still exists (picked on open or in the rail), else the most urgent, else the first.
     var panelSession: ClaudeSession? {
         if let id = panelSessionID, let s = claude.sessions.first(where: { $0.id == id }) { return s }
         return claude.mostUrgent ?? claude.sessions.first

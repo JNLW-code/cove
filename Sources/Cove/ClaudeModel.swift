@@ -165,6 +165,13 @@ final class ClaudeSession: Identifiable {
     /// The conversation shown in the side panel, read from the transcript while the panel is open.
     var chat: [ChatItem] = []
     var chatLoaded = false
+    var changes: [FileChange] = []
+    var todos: [TodoItem] = []
+    var plan: String?
+    var files: [FileTouch] = []
+    var chatTurn = 0
+    /// When James last sent this session a prompt (typed in the app, or a reply from Cove).
+    var lastPromptAt: Date?
     /// "Allowed", "Denied", "Plan approved", "Keep planning": shown in the panel's chat until the next prompt or card.
     var lastAnswerWord: String?
     /// What the session has cost so far and how many prompts it has had, from the transcript.
@@ -277,6 +284,35 @@ final class ClaudeModel {
     var onCardsChanged: (() -> Void)?
     /// A session ended (SessionEnd, or its process went away): its id, for anything caching per session.
     var onSessionEnded: ((String) -> Void)?
+    /// "Always" on a panel card: per session, the rules that allow later requests without asking. Memory only.
+    private(set) var alwaysRules: [String: Set<String>] = [:]
+
+    /// The rule a card would add: for Bash the command's first two words ("npm run"), for other tools the tool
+    /// name. Questions and plans never get a rule.
+    static func alwaysKey(tool: String, command: String) -> String? {
+        if tool == "AskUserQuestion" || tool == "ExitPlanMode" { return nil }
+        guard tool == "Bash" else { return tool }
+        let words = command.split(whereSeparator: { $0.isWhitespace }).prefix(2)
+        return words.isEmpty ? nil : "Bash " + words.joined(separator: " ")
+    }
+
+    /// "npm run" or "Edit": what Always would allow from now on, for the button's tooltip.
+    static func alwaysWords(tool: String, command: String) -> String? {
+        alwaysKey(tool: tool, command: command).map { $0.hasPrefix("Bash ") ? String($0.dropFirst(5)) : $0 }
+    }
+
+    func addAlways(_ card: PermissionCard) {
+        guard let key = Self.alwaysKey(tool: card.tool, command: card.command) else { return }
+        alwaysRules[card.sessionID, default: []].insert(key)
+        Log.app.notice("Always rule added for a session (\(self.alwaysRules[card.sessionID]?.count ?? 0, privacy: .public) now)")
+    }
+
+    var alwaysCount: Int { alwaysRules.values.reduce(0) { $0 + $1.count } }
+
+    func clearAlways() {
+        alwaysRules = [:]
+        onChanged?()
+    }
     /// The 400 ms after a card appears or moves on, during which clicks and shortcuts are ignored.
     static let guardSeconds: TimeInterval = 0.4
     var frontCardShownAt = Date.distantPast
@@ -342,6 +378,7 @@ final class ClaudeModel {
             if s.state == .quiet { s.state = .idle }
         case "UserPromptSubmit":
             s.turnStart = Date()
+            s.lastPromptAt = Date()
             s.filesChanged = []
             s.inFlight = [:]
             s.endsWithQuestion = false
@@ -437,6 +474,16 @@ final class ClaudeModel {
                 break
             }
             let command = Self.describe(tool: tool, inputJSON: m.string("tool_input"))
+            if let key = Self.alwaysKey(tool: tool, command: command), alwaysRules[s.id]?.contains(key) == true {
+                // James pressed Always for this kind of request earlier in the session: allow it straight away.
+                socket?.reply(to: requestID, decision: "allow")
+                s.lastAnswered = Date()
+                s.lastAnswerWord = "Allowed by Always"
+                if s.needsYou == nil { s.state = .working(.running) }
+                Log.app.notice("Allowed by an Always rule")
+                onPeek?(PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Allowed by Always", second: Self.alwaysWords(tool: tool, command: command)), 1.5)
+                break
+            }
             cards.append(PermissionCard(id: requestID, sessionID: s.id, agentID: agent, tool: tool,
                                         inputKey: m.string("input_key"), command: command, received: Date()))
             s.state = .needsYou(.permission)
@@ -513,6 +560,7 @@ final class ClaudeModel {
         socket?.reply(to: id, text: text)
         s.replyRequestID = nil
         s.turnStart = Date()
+        s.lastPromptAt = Date()
         s.lastMessage = nil
         s.doneSeen = true
         s.state = .working(.thinking)
@@ -522,6 +570,7 @@ final class ClaudeModel {
 
     private func end(_ id: String) {
         if let s = session(id) { closeReply(s) }
+        alwaysRules[id] = nil
         onSessionEnded?(id)
         Task { [reader] in await reader.forget(session: id) }
         settleCards(for: id)

@@ -19,7 +19,9 @@ final class IslandActions {
     func toggleReply(for session: ClaudeSession) { controller?.toggleReply(for: session) }
     func dismissCard(_ session: ClaudeSession) { controller?.dismissCard(session) }
     func stepCard(_ delta: Int) { controller?.stepCard(delta) }
-    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil, seen: Bool? = nil) { controller?.answer(card, allow: allow, message: message, seen: seen) }
+    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil, seen: Bool? = nil, always: Bool = false) { controller?.answer(card, allow: allow, message: message, seen: seen, always: always) }
+    func openFile(_ path: String) { NSWorkspace.shared.open(URL(fileURLWithPath: path)) }
+    func revealFile(_ path: String) { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
     func editNote(for session: ClaudeSession) { controller?.editNote(for: session) }
     func setNote(_ text: String?, for session: ClaudeSession) { controller?.setNote(text, for: session) }
     func answerQuestion(_ card: QuestionCard, answers: [String: String]) { controller?.answerQuestion(card, answers: answers) }
