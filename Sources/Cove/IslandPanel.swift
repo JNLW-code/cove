@@ -67,7 +67,7 @@ final class IslandController: NSObject {
 
     nonisolated(unsafe) private static weak var shared: IslandController?
 
-    static let openAnimation = Animation.spring(response: 0.36, dampingFraction: 0.78)
+    static let openAnimation = Animation.spring(response: 0.32, dampingFraction: 0.8)
     static let closeAnimation = Animation.easeInOut(duration: 0.22)
     static let switchAnimation = Animation.spring(response: 0.22, dampingFraction: 0.85)
 
@@ -518,7 +518,7 @@ final class IslandController: NSObject {
         guard !island.demo, !island.pinned, island.mode != .expanded, island.mode != .launchpad else { return }
         hoverTask?.cancel()
         hoverTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(250), tolerance: .milliseconds(30))
+            try? await Task.sleep(for: .milliseconds(200), tolerance: .milliseconds(30))
             guard !Task.isCancelled, let self else { return }
             self.expand(byHover: true)
         }

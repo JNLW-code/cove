@@ -227,7 +227,7 @@ struct CompactLobes: View {
         let p = island.palette
         HStack(spacing: 0) {
             HStack(spacing: 6) {
-                StatusGrid(size: 12, kind: content.kind, palette: p, animate: !island.reduceMotion)
+                StatusGrid(size: 12, kind: content.kind, palette: p, animate: !island.reduceMotion, trigger: content.word.hashValue)
                 Text(content.word).font(Theme.font(12, .semibold)).foregroundStyle(p.onBlackLabel)
             }
             .frame(width: Island.lobeWidth)
@@ -283,21 +283,36 @@ struct StatusGrid: View {
     let kind: CompactContent.Kind
     let palette: Palette
     var animate = true
+    /// Changes when the step word changes ("Reading" → "Editing"): the walk is lively for a few seconds after
+    /// that, then slows right down. Tool events alone do not wake it, so a long quiet turn costs almost nothing.
+    var trigger = 0
+    @State private var lively = true
 
     static let amber: Set<Int> = [3, 4, 7]
     static let ring: Set<Int> = [0, 1, 2, 3, 4, 5, 9, 10, 12, 14, 15, 19, 20, 21, 22, 23, 24]
+    /// Fast while Claude is visibly doing things, slow once it has gone quiet (five times fewer redraws).
+    static let livelyTick = 0.3, quietTick = 1.5, livelyFor = 8.0
+
     var body: some View {
-        switch kind {
-        case .working where animate:
-            TimelineView(.periodic(from: .now, by: 0.3)) { context in
-                cells(lit: Walk.cells(at: Int(context.date.timeIntervalSinceReferenceDate / 0.3)), color: palette.accent)
+        Group {
+            switch kind {
+            case .working where animate:
+                let tick = lively ? Self.livelyTick : Self.quietTick
+                TimelineView(.periodic(from: .now, by: tick)) { context in
+                    cells(lit: Walk.cells(at: Int(context.date.timeIntervalSinceReferenceDate / Self.livelyTick)), color: palette.accent)
+                }
+            case .working:
+                cells(lit: Set(Walk.start), color: palette.accent)
+            case .needsYou:
+                cells(lit: Self.amber, color: palette.needsYou)
+            case .done:
+                cells(lit: Self.ring, color: palette.done)
             }
-        case .working:
-            cells(lit: Set(Walk.start), color: palette.accent)
-        case .needsYou:
-            cells(lit: Self.amber, color: palette.needsYou)
-        case .done:
-            cells(lit: Self.ring, color: palette.done)
+        }
+        .task(id: trigger) {
+            lively = true
+            try? await Task.sleep(for: .seconds(Self.livelyFor))
+            if !Task.isCancelled { lively = false }
         }
     }
 

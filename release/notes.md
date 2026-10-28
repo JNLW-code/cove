@@ -1,1 +1,1 @@
-Claude Code over SSH: sessions on a server reach the notch through an SSH tunnel. One command on the Mac sets it up (see "Claude Code over SSH" in the Read Me or the README). Rows show the server's name. Launch at Login now works from the main Applications folder too.
+Lower power: the status grid animates briskly only for a few seconds after Claude changes step, then slows right down. The pill now costs about 0.2 % CPU while Claude works, and nothing at all when idle. Snappier hover and open.

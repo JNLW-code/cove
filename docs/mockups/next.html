@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cove next steps mockup</title>
+<style>
+  :root { --bg:#0b0c10; --text:#e6e8ee; --muted:#9aa0ab; --accent:#3b82d0; --orange:#ff9230; --green:#30d158; --red:#ff4245; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--bg); color:var(--text); font-family:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif; }
+  body { padding:18px; }
+  h1 { font-size:15px; font-weight:600; margin:0 0 4px; }
+  p.lead { font-size:12.5px; color:var(--muted); margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns: 1fr; gap:22px; max-width:1100px; }
+  .shot { position:relative; border-radius:14px; overflow:hidden; background:
+      radial-gradient(500px 300px at 20% 30%, #b94e74 0%, transparent 60%),
+      radial-gradient(600px 400px at 75% 20%, #3f6fd8 0%, transparent 60%),
+      radial-gradient(500px 500px at 60% 90%, #e5a24a 0%, transparent 60%),
+      linear-gradient(180deg,#2a2f52,#0d1020); }
+  .shot .label { position:absolute; left:14px; bottom:10px; font-size:11.5px; color:#fff; opacity:.75; }
+  .menubar { height:30px; background:rgba(0,0,0,.28); }
+  .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:180px; height:32px; background:#000; border-radius:0 0 16px 16px; z-index:3; }
+  /* island: glass */
+  .island { position:absolute; top:0; left:50%; transform:translateX(-50%); width:662px; background:rgba(255,255,255,.62); backdrop-filter: blur(28px) saturate(1.4); -webkit-backdrop-filter: blur(28px) saturate(1.4); border-radius:0 0 35px 35px; box-shadow:0 24px 60px rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.5); border-top:0; color:#1e2129; padding:46px 23px 14px; z-index:2; }
+  .tools { position:absolute; top:7px; left:24px; display:flex; gap:12px; font-size:12px; opacity:.6; }
+  .tools.r { left:auto; right:24px; }
+  .card { background:rgba(255,255,255,.55); border:1px solid var(--orange); border-radius:15px; padding:14px 20px; display:flex; gap:16px; align-items:flex-start; }
+  .dots { width:32px; height:32px; display:grid; grid-template-columns:repeat(5,1fr); gap:2px; flex:none; margin-top:2px; }
+  .dots i { background:rgba(0,0,0,.08); border-radius:1px; }
+  .dots i.on { background:var(--orange); }
+  .card h3 { font-size:14px; font-weight:700; margin-bottom:4px; }
+  .card .cmd { font-family:ui-monospace,Menlo,monospace; font-size:12px; color:#3a3f4a; background:rgba(255,255,255,.6); border-radius:8px; padding:6px 10px; margin:6px 0; }
+  .card .sub { font-size:11px; color:#6b7180; }
+  .pills { margin-left:auto; display:flex; flex-direction:column; gap:6px; flex:none; }
+  .pill { height:30px; width:118px; border-radius:15px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; font-weight:600; }
+  .pill small { font-weight:400; opacity:.55; font-size:10.5px; }
+  .pill.allow { background:#1e2129; color:#fff; }
+  .pill.always { background:rgba(59,130,208,.18); color:#1e2129; border:1px solid rgba(59,130,208,.5); }
+  .pill.deny { background:rgba(0,0,0,.08); color:#1e2129; }
+  .rows { margin-top:8px; background:rgba(255,255,255,.5); border-radius:15px; }
+  .row { height:28px; display:flex; align-items:center; gap:10px; padding:0 14px; font-size:12px; border-top:1px solid rgba(0,0,0,.06); }
+  .row:first-child { border-top:0; }
+  .row b { font-weight:600; }
+  .row .muted { color:#6b7180; }
+  .row .right { margin-left:auto; color:#8a90a0; font-variant-numeric:tabular-nums; }
+  /* peeks */
+  .peek { position:absolute; top:0; left:50%; transform:translateX(-50%); width:180px; background:#000; color:#fff; border-radius:0 0 14px 14px; padding:34px 10px 6px; text-align:center; font-size:13px; font-weight:600; z-index:3; }
+  .peek small { display:block; font-weight:400; font-size:11px; opacity:.7; margin-top:1px; }
+  .peek .join { display:inline-block; margin-top:5px; background:#30d158; color:#031; font-size:11px; font-weight:700; padding:3px 12px; border-radius:10px; }
+  .peek .inst { display:inline-block; margin-top:5px; background:#fff; color:#000; font-size:11px; font-weight:700; padding:3px 12px; border-radius:10px; }
+  /* launchpad widgets row */
+  .lp { position:absolute; top:0; left:50%; transform:translateX(-50%); width:1000px; background:rgba(255,255,255,.62); backdrop-filter: blur(28px) saturate(1.4); -webkit-backdrop-filter: blur(28px) saturate(1.4); border-radius:0 0 44px 44px; border:1px solid rgba(255,255,255,.5); border-top:0; color:#1e2129; padding:44px 48px 18px; z-index:2; }
+  .search { width:270px; height:32px; margin:0 auto 18px; border-radius:16px; background:rgba(0,0,0,.07); display:flex; align-items:center; padding:0 12px; font-size:13px; color:#6b7180; gap:8px; }
+  .wrow { display:flex; gap:12px; justify-content:center; }
+  .w { background:rgba(0,0,0,.07); border-radius:14px; height:96px; padding:12px 14px; }
+  .w h4 { font-size:13px; font-weight:700; margin-bottom:8px; }
+  .sc { width:300px; }
+  .sc .btns { display:flex; gap:12px; }
+  .sc .b { display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10px; color:#6b7180; width:44px; }
+  .sc .b i { width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,.1); display:flex; align-items:center; justify-content:center; font-style:normal; font-size:15px; color:#1e2129; }
+  .sc .b i.on { background:var(--accent); color:#fff; }
+  .shelf { width:240px; }
+  .shelf .files { display:flex; gap:10px; }
+  .shelf .f { width:44px; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:9.5px; color:#6b7180; text-align:center; }
+  .shelf .f i { width:40px; height:40px; border-radius:9px; background:#fff; display:flex; align-items:center; justify-content:center; font-style:normal; font-size:9px; font-weight:700; color:#555; box-shadow:0 1px 2px rgba(0,0,0,.15); }
+  .shelf .drop { font-size:10.5px; color:#8a90a0; margin-top:6px; }
+  .tog { width:190px; display:flex; gap:14px; align-items:center; justify-content:center; }
+  .tog .b { display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10px; color:#6b7180; }
+  .tog .b i { width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,.1); display:flex; align-items:center; justify-content:center; font-style:normal; font-size:15px; }
+  .tog .b i.on { background:var(--accent); color:#fff; }
+  .note { font-size:11.5px; color:var(--muted); margin-top:6px; }
+</style>
+</head>
+<body>
+<h1>Cove: the next five, on the notch</h1>
+<p class="lead">Glass theme, as installed. Each panel is one state of the island. Static mockup.</p>
+<div class="grid">
+
+  <div class="shot" style="height:300px">
+    <div class="menubar"></div>
+    <div class="island">
+      <div class="tools">⚙ &nbsp;✓ &nbsp;🔇 &nbsp;◐</div><div class="tools r">🟠 🟣 🟢</div>
+      <div class="card">
+        <div class="dots"><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div style="min-width:0">
+          <h3>Claude needs your OK</h3>
+          <div class="cmd">npm run check</div>
+          <div class="sub">Stream A - V3 Current · quoteflow-v3 · feat/b2-phone-job-page</div>
+        </div>
+        <div class="pills">
+          <div class="pill allow">Allow <small>⌃⌥Y</small></div>
+          <div class="pill always">Always <small>this command</small></div>
+          <div class="pill deny">Deny <small>⌃⌥N</small></div>
+        </div>
+      </div>
+      <div class="rows">
+        <div class="row"><b>Stream A - V3 Current</b><span class="muted">Needs you</span><span class="right">$5.52 · 10%</span></div>
+        <div class="row"><b>Stream B - Communications map doc…</b><span class="muted">Reading</span><span class="right">$2.34 · 12%</span></div>
+      </div>
+    </div>
+    <div class="notch"></div>
+    <div class="label">1. "Always": allow this exact command for the rest of the session, no card next time.</div>
+  </div>
+
+  <div class="shot" style="height:120px">
+    <div class="menubar"></div>
+    <div class="peek">Standup · 5 min<small>Google Meet</small><span class="join">Join</span></div>
+    <div class="label">2. Meeting peek: five minutes before the next event, with Join. Click opens the link in Chrome.</div>
+  </div>
+
+  <div class="shot" style="height:120px">
+    <div class="menubar"></div>
+    <div class="peek">Cove 0.7 ready<small>installs in 4 s</small><span class="inst">Install</span></div>
+    <div class="label">3. Update peek from the notch instead of Sparkle's window. Click installs and relaunches.</div>
+  </div>
+
+  <div class="shot" style="height:230px">
+    <div class="menubar"></div>
+    <div class="lp">
+      <div class="search">🔍 Search</div>
+      <div class="wrow">
+        <div class="w tog">
+          <div class="b"><i class="on">📶</i>Wi-Fi</div><div class="b"><i>◐</i>Dark</div><div class="b"><i class="on">🔊</i>Sound</div>
+        </div>
+        <div class="w sc">
+          <h4>Shortcuts</h4>
+          <div class="btns">
+            <div class="b"><i class="on">🌙</i>Focus</div>
+            <div class="b"><i>📡</i>Hotspot</div>
+            <div class="b"><i>🖥</i>Mirror</div>
+            <div class="b"><i>🏠</i>Lights</div>
+            <div class="b"><i>＋</i>Add…</div>
+          </div>
+        </div>
+        <div class="w shelf">
+          <h4>Shelf</h4>
+          <div class="files">
+            <div class="f"><i>PDF</i>Quote 3372</div>
+            <div class="f"><i>JPG</i>IMG_2048</div>
+            <div class="f"><i>XLS</i>Jobs Oct</div>
+          </div>
+          <div class="drop">Drop files here, drag them out anywhere.</div>
+        </div>
+      </div>
+    </div>
+    <div class="notch"></div>
+    <div class="label">4 and 5. Shortcuts folder as buttons (any shortcut in a "Cove" folder, no code), and a file shelf tile.</div>
+  </div>
+</div>
+<p class="note">Power rule for all of it: nothing animates or polls while the notch is closed. The island draws only when something changes.</p>
+</body>
+</html>

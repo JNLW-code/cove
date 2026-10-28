@@ -130,7 +130,7 @@ struct SessionRow: View {
     @ViewBuilder private func leading(_ p: Palette) -> some View {
         switch session.state {
         case .working, .running:
-            StatusGrid(size: 16, kind: .working, palette: p, animate: !island.reduceMotion)
+            StatusGrid(size: 16, kind: .working, palette: p, animate: !island.reduceMotion, trigger: stepWord.hashValue)
         case .needsYou:
             StatusGrid(size: 16, kind: .needsYou, palette: p)
         case .done:
