@@ -207,7 +207,9 @@ struct ChatList: View {
                         case .tools(_, let calls): toolLine(calls, p)
                         }
                     }
-                    if let card = island.claude.card(for: session) {
+                    if let question = island.claude.question(for: session) {
+                        PanelQuestionCard(card: question, session: session, island: island, actions: actions)
+                    } else if let card = island.claude.card(for: session) {
                         PanelPermissionCard(card: card, session: session, island: island, actions: actions)
                     } else if let word = session.lastAnswerWord {
                         answerLine(word, p)
@@ -222,6 +224,7 @@ struct ChatList: View {
             .onAppear { proxy.scrollTo("end", anchor: .bottom) }
             .onChange(of: session.chat.count) { proxy.scrollTo("end", anchor: .bottom) }
             .onChange(of: island.claude.card(for: session)?.id) { proxy.scrollTo("end", anchor: .bottom) }
+            .onChange(of: island.claude.question(for: session)?.id) { proxy.scrollTo("end", anchor: .bottom) }
             .onChange(of: session.id) { proxy.scrollTo("end", anchor: .bottom) }
         }
     }
@@ -241,8 +244,8 @@ struct ChatList: View {
         case .needsYou(let kind):
             switch kind {
             case .permission: return island.claude.card(for: session) != nil ? nil : ("Waiting for your OK in the app", p.needsYou)
-            case .question: return ("Asking you a question on the island", p.needsYou)
-            case .plan: return ("Plan ready on the island", p.needsYou)
+            case .question: return island.claude.question(for: session) != nil ? nil : ("Asking you a question in the app", p.needsYou)
+            case .plan: return island.claude.card(for: session) != nil ? nil : ("Plan ready in the app", p.needsYou)
             case .askingInApp: return ("Asking in the app", p.needsYou)
             }
         default: return nil
@@ -439,5 +442,102 @@ struct PanelPermissionCard: View {
         .buttonStyle(PressStyle(radius: 12))
         .disabled(!on)
         .opacity(on ? 1 : 0.35)
+    }
+}
+
+/// Claude's multiple-choice question inside the chat: options stacked full width, or type an answer. Several
+/// questions come one at a time ("1 of 2"). Same answer path as the island's card.
+struct PanelQuestionCard: View {
+    let card: QuestionCard
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+    @State private var index = 0
+    @State private var answers: [String: String] = [:]
+    @State private var picked: [String] = []
+    @State private var typed = ""
+
+    var body: some View {
+        let p = island.palette
+        let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
+        let q = card.questions[min(index, card.questions.count - 1)]
+        let canSend = !picked.isEmpty || !typed.trimmingCharacters(in: .whitespaces).isEmpty
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(q.header.isEmpty ? "Claude has a question" : "Claude asks · \(q.header)")
+                    .font(Theme.font(12, .bold)).foregroundStyle(p.label).lineLimit(1)
+                Spacer(minLength: 0)
+                if card.questions.count > 1 {
+                    Text("\(index + 1) of \(card.questions.count)").font(Theme.digits(10.5)).foregroundStyle(p.tertiaryLabel)
+                }
+            }
+            Text(q.text).font(Theme.font(12)).foregroundStyle(p.label).lineSpacing(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+            ForEach(q.options, id: \.label) { option in optionRow(option, q, p) }
+            HStack(spacing: 6) {
+                TextField("Or type an answer…", text: $typed)
+                    .textFieldStyle(.plain).font(Theme.font(11.5)).foregroundStyle(p.label)
+                    .onSubmit { submit(q, typed) }
+                    .padding(.horizontal, 8).frame(height: 26)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                if q.multiSelect || !typed.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Button { submit(q, typed.trimmingCharacters(in: .whitespaces).isEmpty ? picked.joined(separator: ", ") : typed) } label: {
+                        Text(q.multiSelect ? "Done" : "Send").font(Theme.font(11.5, .semibold)).foregroundStyle(p.allowText)
+                            .padding(.horizontal, 12).frame(height: 26).background(Capsule().fill(p.allowBackground))
+                    }
+                    .buttonStyle(PressStyle(radius: 13))
+                    .disabled(!canSend)
+                    .opacity(canSend ? 1 : 0.35)
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(shape.fill(p.tile))
+        .overlay(shape.strokeBorder(p.needsYou, lineWidth: 1))
+        .id(card.id)
+    }
+
+    private func optionRow(_ option: ClaudeQuestion.Option, _ q: ClaudeQuestion, _ p: Palette) -> some View {
+        let on = picked.contains(option.label)
+        return Button {
+            if q.multiSelect {
+                if on { picked.removeAll { $0 == option.label } } else { picked.append(option.label) }
+            } else {
+                submit(q, option.label)
+            }
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                if q.multiSelect {
+                    Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.system(size: 12))
+                        .foregroundStyle(on ? p.accent : p.tertiaryLabel).padding(.top, 1)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(option.label).font(Theme.font(12, .semibold)).foregroundStyle(p.label)
+                    if !option.description.isEmpty {
+                        Text(option.description).font(Theme.font(11)).foregroundStyle(p.secondaryLabel).lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(on ? p.accent : p.rim, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(PressStyle(radius: 8))
+    }
+
+    /// One question answered: on to the next, or send the lot.
+    private func submit(_ q: ClaudeQuestion, _ answer: String) {
+        let text = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        answers[q.text] = text
+        picked = []
+        typed = ""
+        if index + 1 < card.questions.count { index += 1 } else { actions.answerQuestion(card, answers: answers) }
     }
 }

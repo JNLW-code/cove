@@ -395,6 +395,7 @@ final class IslandController: NSObject {
         guard !island.claude.frontCardGuarded, island.displayedQuestion?.id == card.id || onPanel else { return }
         haptic()
         island.claude.answer(card, answers: answers)
+        island.claude.session(card.sessionID)?.lastAnswerWord = "Answered"
         Log.app.notice("Question answered from the island")
         if island.claude.frontCard == nil, island.claude.frontQuestion == nil {
             showPeek(PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Answered", second: nil), seconds: 1.5)
