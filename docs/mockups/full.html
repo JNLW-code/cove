@@ -207,6 +207,42 @@
   .cp .compose .row2 .sp { flex:1; } .cp .compose .row2 .send { width:24px; height:24px; border-radius:50%; background:#1e2129; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; } .screen.matte .cp .compose .row2 .send { background:#fff; color:#111; }
   .legend { position:absolute; left:40px; bottom:90px; width:560px; background:rgba(0,0,0,.72); color:#fff; border-radius:12px; padding:12px 14px; font-size:11.5px; line-height:1.5; z-index:6; }
   .legend b { color:#8fe3a2; } .legend u { color:#ffb86b; text-decoration:none; }
+  /* combined: side-panel width, full features. Sessions as a collapsible strip on the left edge. */
+  .cx { position:absolute; top:40px; right:0; bottom:0; width:420px; display:flex; z-index:5; box-shadow:-20px 0 60px rgba(0,0,0,.35); border-radius:16px 0 0 0; overflow:hidden; }
+  .cx.glass { border-left:1px solid rgba(255,255,255,.55); border-top:1px solid rgba(255,255,255,.55); }
+  .cx .rail { width:44px; border-right:1px solid rgba(127,127,127,.18); padding:10px 6px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .cx .rail .av { width:30px; height:30px; border-radius:9px; background:rgba(127,127,127,.14); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#1e2129; position:relative; }
+  .screen.matte .cx .rail .av { color:#E3E7EF; }
+  .cx .rail .av.on { background:rgba(255,255,255,.85); } .screen.matte .cx .rail .av.on { background:#2a2e38; }
+  .cx .rail .av i { position:absolute; right:-2px; top:-2px; width:9px; height:9px; border-radius:50%; border:2px solid #fff; } .cx .rail .av i.b { background:var(--accent); } .cx .rail .av i.g { background:var(--green); } .cx .rail .av i.o { background:var(--orange); }
+  .cx .rail .sep { width:22px; height:1px; background:rgba(127,127,127,.25); margin:2px 0; }
+  .cx .rail .plus { color:var(--accent); font-size:16px; }
+  .cx .rail .bot { margin-top:auto; display:flex; flex-direction:column; gap:10px; color:#8a90a0; font-size:13px; align-items:center; }
+  .cx .mn { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .cx .tb2 { height:38px; display:flex; align-items:center; padding:0 10px 0 12px; gap:6px; border-bottom:1px solid rgba(127,127,127,.18); font-size:12px; }
+  .cx .tb2 b { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px; } .cx .tb2 .sp { flex:1; }
+  .cx .tb2 .ic { width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#6b7180; background:rgba(127,127,127,.12); }
+  .cx .tb2 .ic.go { background:var(--accent); color:#fff; }
+  .cx .tabs2 { display:flex; gap:2px; padding:6px 10px 0; font-size:11px; }
+  .cx .tabs2 span { padding:4px 9px; border-radius:7px; color:#6b7180; } .cx .tabs2 span.on { background:rgba(127,127,127,.14); color:#1e2129; font-weight:600; } .screen.matte .cx .tabs2 span.on { color:#E3E7EF; }
+  .cx .tabs2 span em { font-style:normal; margin-left:4px; background:var(--orange); color:#fff; border-radius:7px; padding:0 5px; font-size:9.5px; }
+  .cx .body { flex:1; padding:10px 12px; display:flex; flex-direction:column; gap:8px; overflow:hidden; font-size:12px; }
+  .cx .me { align-self:flex-end; max-width:85%; background:rgba(59,130,208,.18); border-radius:12px 12px 3px 12px; padding:7px 10px; }
+  .cx .ai { max-width:95%; line-height:1.45; }
+  .cx .tool { font-size:11px; color:#6b7180; }
+  .cx .fold { background:rgba(127,127,127,.12); border-radius:9px; padding:7px 9px; font-size:11px; }
+  .cx .fold .fh { display:flex; justify-content:space-between; } .cx .fold em { color:#8a90a0; font-style:normal; }
+  .cx .diff { font-family:ui-monospace,Menlo,monospace; font-size:10px; line-height:1.5; margin-top:5px; }
+  .cx .diff .a { background:rgba(48,209,88,.18); } .cx .diff .d { background:rgba(255,66,69,.18); }
+  .cx .perm { border:1px solid var(--orange); border-radius:11px; padding:8px 10px; background:rgba(255,255,255,.4); font-size:11.5px; }
+  .screen.matte .cx .perm { background:#21242D; }
+  .cx .perm .cmd { font-family:ui-monospace,Menlo,monospace; margin:3px 0 6px; }
+  .cx .perm .p { display:flex; gap:6px; } .cx .perm .p span { padding:4px 10px; border-radius:11px; font-weight:600; background:rgba(127,127,127,.18); } .cx .perm .p span.a { background:#1e2129; color:#fff; } .screen.matte .cx .perm .p span.a { background:#fff; color:#111; }
+  .cx .compose { margin-top:auto; border-top:1px solid rgba(127,127,127,.18); padding:8px 10px; display:flex; flex-direction:column; gap:6px; }
+  .cx .compose .f { min-height:34px; border-radius:10px; background:rgba(127,127,127,.12); font-size:12px; color:#8a90a0; display:flex; align-items:center; padding:0 10px; }
+  .cx .compose .row2 { display:flex; gap:8px; font-size:10.5px; color:#8a90a0; align-items:center; }
+  .cx .compose .row2 .chip { padding:2px 7px; border-radius:7px; background:rgba(127,127,127,.12); }
+  .cx .compose .row2 .sp { flex:1; } .cx .compose .row2 .send { width:22px; height:22px; border-radius:50%; background:#1e2129; color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; } .screen.matte .cx .compose .row2 .send { background:#fff; color:#111; }
   .hidden { display:none !important; }
   .cap { font-size:12px; color:var(--chrome-text); opacity:.75; margin-top:10px; }
 </style>
@@ -353,6 +389,26 @@ const STATES = {
     </div>
     </div>
     <div class="legend"><b>Cove does:</b> list every project and session · read the whole chat · reply · Allow / Always / Deny, questions, plans · steps and diffs · Plan, Diff, Files, Terminal · pin, rename, search · new session (opens the app on it).<br><u>App only, one click:</u> stop Claude mid-turn · model and effort · slash commands · attachments · Browser, Artifacts, Side chat, Background tasks, Simulator, Remote Control.</div>` },
+  "Claude panel, combined": { cap: "Side-panel width, full features. Sessions as initials on a rail (hover shows the name, click the project header to expand). Tabs: Chat, Plan, Diff, Files, Terminal. Only the blue ↗ leaves for the app.", html: `<div class="cx glass">
+    <div class="rail">
+      <div class="plus">＋</div><div class="sep"></div>
+      <div class="av on" title="Stream A - V3 Current">SA<i class="b"></i></div><div class="av" title="Stream B">SB<i class="g"></i></div><div class="av" title="Explore floorplan">EF<i class="o"></i></div>
+      <div class="sep"></div><div class="av" title="notch-island · macOS Dynamic Island">DI<i class="b"></i></div>
+      <div class="bot"><span>🔍</span><span>☰</span><span>⚙</span></div>
+    </div>
+    <div class="mn">
+      <div class="tb2"><b>Stream A - V3 Current</b><span style="color:#8a90a0">· 2 m 14 s</span><span class="sp"></span><span class="ic" title="Stop">■</span><span class="ic" title="Pin">📌</span><span class="ic go" title="Open in Claude">↗</span></div>
+      <div class="tabs2"><span class="on">Chat</span><span>Plan</span><span>Diff<em>2</em></span><span>Files</span><span>Terminal</span></div>
+      <div class="body">
+        <div class="me">Add a discount code to the checkout and make sure the tests pass.</div>
+        <div class="ai">On it. Checkout reads the cart total in two places, so I'll add one helper and call it from both.</div>
+        <div class="tool">✓ Read checkout.ts, cart.ts · ✓ Edit checkout.ts · ✓ npm test, 42 passed</div>
+        <div class="fold"><div class="fh"><b>checkout.ts</b><em>+14 −3</em></div><div class="diff"><div class="d">- const total = subtotal + shipping</div><div class="a">+ const total = subtotal - applyCode(code, subtotal) + shipping</div></div></div>
+        <div class="perm"><b>Claude wants to run</b><div class="cmd">npm run check</div><div class="p"><span class="a">Allow ⌃⌥Y</span><span>Always</span><span>Deny ⌃⌥N</span></div></div>
+        <div class="ai" style="color:#8a90a0">Editing cart.ts…</div>
+      </div>
+      <div class="compose"><div class="f">Reply to Claude… (⇧⏎ for a new line, drop a file to attach)</div><div class="row2"><span class="chip">Opus 5.5</span><span class="chip">High</span><span class="chip">/ commands</span><span class="chip">📎</span><span class="sp"></span><span class="send">↑</span></div></div>
+    </div></div>` },
   "Settings": { cap: "⌘, from the island or the menu. Click a section on the left to see its options. Shown: Claude Code. The other sections are in the buttons that follow.", html: `<div class="set"><div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Cove Settings</div>
     <div class="nav"><div>⚙ General</div><div class="on">✦ Claude Code</div><div>▭ Island</div><div>⊞ Launchpad</div><div>↻ Updates</div><div>🔒 Permissions</div><div>ⓘ About</div></div>
     <div class="main"><h2>Claude Code</h2>
