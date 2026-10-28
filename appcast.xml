@@ -3,6 +3,16 @@
     <channel>
         <title>Cove</title>
         <item>
+            <title>0.7</title>
+            <pubDate>Wed, 28 Oct 2026 22:49:17 +1100</pubDate>
+            <link>https://github.com/JNLW-code/cove/releases</link>
+            <sparkle:version>100</sparkle:version>
+            <sparkle:shortVersionString>0.7</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/JNLW-code/cove/releases/download/v0.7/Cove.dmg" length="2467080" type="application/octet-stream" sparkle:edSignature="2js6D03U1ehLhGMwbSaREeASG1pVFG31SsISvZ9AieNCOYmdcE7ou1EAV+K+bYPBO4Bd91R/lG8YAul11syWBQ=="/>
+        </item>
+        <item>
             <title>0.5</title>
             <pubDate>Fri, 16 Oct 2026 12:00:25 +1100</pubDate>
             <link>https://github.com/JNLW-code/cove/releases</link>
@@ -21,16 +31,6 @@
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
             <enclosure url="https://github.com/JNLW-code/cove/releases/download/v0.4/Cove.dmg" length="2334526" type="application/octet-stream" sparkle:edSignature="yNy0iIDahxrx1ZNjAjl+08anJ+tIu+yHPvUSzSq82da1WanK7VaQruP4tW2/4/iDRiSrseJQgmTfRpRnujPyCA=="/>
-        </item>
-        <item>
-            <title>0.3.1</title>
-            <pubDate>Fri, 16 Oct 2026 10:06:36 +1100</pubDate>
-            <link>https://github.com/JNLW-code/cove/releases</link>
-            <sparkle:version>78</sparkle:version>
-            <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/JNLW-code/cove/releases/download/v0.3.1/Cove.dmg" length="2398660" type="application/octet-stream" sparkle:edSignature="BERdq9oJdOGnLJJQnlUTxx3D21N3DBn+3NMvxLognWehj3kBqf6ewhqT+kx8J0+E2Ugtl3d5rdpK1CoJ0AgBCw=="/>
         </item>
     </channel>
 </rss>
