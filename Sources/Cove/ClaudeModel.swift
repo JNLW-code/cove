@@ -165,6 +165,8 @@ final class ClaudeSession: Identifiable {
     /// The conversation shown in the side panel, read from the transcript while the panel is open.
     var chat: [ChatItem] = []
     var chatLoaded = false
+    /// "Allowed", "Denied", "Plan approved", "Keep planning": shown in the panel's chat until the next prompt or card.
+    var lastAnswerWord: String?
     /// What the session has cost so far and how many prompts it has had, from the transcript.
     var usage = UsageTotals()
     var usageRead = Date.distantPast
@@ -344,6 +346,7 @@ final class ClaudeModel {
             s.inFlight = [:]
             s.endsWithQuestion = false
             s.lastMessage = nil
+            s.lastAnswerWord = nil
             closeReply(s)
             s.doneSeen = false
             s.agents = []

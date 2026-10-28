@@ -115,7 +115,7 @@ struct SessionPane: View {
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
             Rectangle().fill(p.rim).frame(height: 1)
-            ChatList(session: session, island: island)
+            ChatList(session: session, island: island, actions: actions)
         }
     }
 
@@ -174,6 +174,7 @@ struct SessionPane: View {
 struct ChatList: View {
     var session: ClaudeSession
     var island: Island
+    let actions: IslandActions
 
     private enum Row: Identifiable {
         case prompt(String, String)
@@ -206,6 +207,11 @@ struct ChatList: View {
                         case .tools(_, let calls): toolLine(calls, p)
                         }
                     }
+                    if let card = island.claude.card(for: session) {
+                        PanelPermissionCard(card: card, session: session, island: island, actions: actions)
+                    } else if let word = session.lastAnswerWord {
+                        answerLine(word, p)
+                    }
                     if let line = statusLine {
                         Text(line.0).font(Theme.font(12)).foregroundStyle(line.1)
                     }
@@ -215,8 +221,16 @@ struct ChatList: View {
             }
             .onAppear { proxy.scrollTo("end", anchor: .bottom) }
             .onChange(of: session.chat.count) { proxy.scrollTo("end", anchor: .bottom) }
+            .onChange(of: island.claude.card(for: session)?.id) { proxy.scrollTo("end", anchor: .bottom) }
             .onChange(of: session.id) { proxy.scrollTo("end", anchor: .bottom) }
         }
+    }
+
+    /// "✓ Allowed" after a card was answered, until the next prompt or card.
+    private func answerLine(_ word: String, _ p: Palette) -> some View {
+        let denied = word == "Denied" || word == "Keep planning"
+        return Text("\(Image(systemName: denied ? "xmark" : "checkmark")) \(word)")
+            .font(Theme.font(11, .medium)).foregroundStyle(denied ? p.blocked : p.done)
     }
 
     /// What Claude is doing right now, under the last message.
@@ -226,7 +240,7 @@ struct ChatList: View {
         case .working(let step), .running(_, let step): return ("\(step.word)…", p.secondaryLabel)
         case .needsYou(let kind):
             switch kind {
-            case .permission: return ("Waiting for your OK on the island", p.needsYou)
+            case .permission: return island.claude.card(for: session) != nil ? nil : ("Waiting for your OK in the app", p.needsYou)
             case .question: return ("Asking you a question on the island", p.needsYou)
             case .plan: return ("Plan ready on the island", p.needsYou)
             case .askingInApp: return ("Asking in the app", p.needsYou)
@@ -343,5 +357,87 @@ struct MarkdownText: View {
         let joined = lines.joined(separator: "\n")
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         return (try? AttributedString(markdown: joined, options: options)) ?? AttributedString(joined)
+    }
+}
+
+/// The permission card inside the chat (mockup: orange edge, "Claude wants to run", the command, Allow / Deny).
+/// A long command opens in a scrollable box and Allow turns on once it has been scrolled to the end; a plan shows
+/// Approve / Keep planning with a line for why not. Same answer path and 400 ms guard as the island's card.
+struct PanelPermissionCard: View {
+    let card: PermissionCard
+    var session: ClaudeSession
+    var island: Island
+    let actions: IslandActions
+    @State private var scrolledToEnd = false
+    @State private var feedback = ""
+
+    var body: some View {
+        let p = island.palette
+        let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
+        let long = card.isPlan || Island.isLong(card.command)
+        let allowOn = long && !card.isPlan ? scrolledToEnd : true
+        VStack(alignment: .leading, spacing: 6) {
+            Text(card.isPlan ? "Claude's plan is ready" : "Claude wants to run").font(Theme.font(12, .bold)).foregroundStyle(p.label)
+            if long {
+                ScrollView(.vertical) {
+                    Text(card.command).font(card.isPlan ? Theme.font(11.5) : Theme.mono(10.5)).foregroundStyle(p.label)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 8).padding(.vertical, 6)
+                        .textSelection(.enabled)
+                }
+                .frame(height: Island.longCommandBox)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 2
+                } action: { _, atEnd in
+                    if atEnd { scrolledToEnd = true }
+                }
+                if card.isPlan {
+                    TextField("Why not? Goes to Claude with Keep planning (optional)", text: $feedback)
+                        .textFieldStyle(.plain).font(Theme.font(11.5)).foregroundStyle(p.label)
+                        .padding(.horizontal, 8).frame(height: 24)
+                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(p.island))
+                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(p.rim, lineWidth: 1))
+                }
+                Text(card.isPlan ? "\(lines) lines · scroll to read it all, or Approve now"
+                     : scrolledToEnd ? "Full command seen · \(lines) lines" : "Scroll to the end to turn on Allow · \(lines) lines")
+                    .font(Theme.font(10.5)).foregroundStyle(p.tertiaryLabel)
+            } else {
+                Text(card.command).font(Theme.mono(11)).foregroundStyle(p.label).lineLimit(2).truncationMode(.tail)
+                    .textSelection(.enabled)
+            }
+            HStack(spacing: 6) {
+                pill(card.isPlan ? "Approve" : "Allow", island.hotKeyAllow, p.allowBackground, p.allowText, on: allowOn) {
+                    actions.answer(card, allow: true, seen: scrolledToEnd)
+                }
+                pill(card.isPlan ? "Keep planning" : "Deny", island.hotKeyDeny, p.deny, p.label, on: true) {
+                    actions.answer(card, allow: false, message: feedback, seen: scrolledToEnd)
+                }
+            }
+            .padding(.top, 2)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(shape.fill(p.tile))
+        .overlay(shape.strokeBorder(p.needsYou, lineWidth: 1))
+        .id(card.id)
+    }
+
+    private var lines: Int { card.command.filter { $0 == "\n" }.count + 1 }
+
+    private func pill(_ title: String, _ key: String, _ bg: Color, _ fg: Color, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(title).font(Theme.font(11.5, .semibold))
+                Text(key).font(Theme.font(9.5)).opacity(0.55)
+            }
+            .foregroundStyle(fg)
+            .padding(.horizontal, 10).frame(height: 24)
+            .background(Capsule().fill(bg))
+        }
+        .buttonStyle(PressStyle(radius: 12))
+        .disabled(!on)
+        .opacity(on ? 1 : 0.35)
     }
 }

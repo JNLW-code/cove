@@ -386,6 +386,8 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if let lines = setup?.apply(SetupChoices()) { for line in lines { Log.app.notice("Setup result: \(line, privacy: .public)") } }
         case "test.update": updater?.checkInBackground()   // silent check against COVE_FEED, installs and relaunches
         case "test.allow": if let card = island.claude.frontCard { controller.answer(card, allow: true) }
+        case "test.panel.allow", "test.panel.deny":   // the card the panel shows, as if its button were pressed (long command counted as read)
+            if let s = island.panelSession, let card = island.claude.card(for: s) { controller.answer(card, allow: command.hasSuffix("allow"), seen: true) }
         case "test.deny": if let card = island.claude.frontCard { controller.answer(card, allow: false) }
         case "test.reply": if let s = island.cardSession { controller.sendReply("test reply from the island", to: s) }
         case "test.seen": island.claude.frontCardFullySeen = true   // as if the long box had been scrolled to the end

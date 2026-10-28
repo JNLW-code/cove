@@ -366,23 +366,33 @@ final class IslandController: NSObject {
         show(.expanded, animation: Self.switchAnimation)
     }
 
-    /// Allow or Deny from a button or shortcut. Ignored for 400 ms after a card appears or moves on.
-    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil) {
-        guard !island.claude.frontCardGuarded, island.displayedCard?.id == card.id else { return }
-        if allow, !card.isPlan, Island.isLong(card.command), !island.claude.frontCardFullySeen { return }
+    /// Allow or Deny from a button or shortcut, on the island's card or the side panel's. Ignored for 400 ms after
+    /// a card appears or moves on. `seen` is the panel's own "scrolled to the end" for a long command; the island's
+    /// card tracks that in the model.
+    func answer(_ card: PermissionCard, allow: Bool, message: String? = nil, seen: Bool? = nil) {
+        let onIsland = island.displayedCard?.id == card.id
+        let onPanel = island.panelOpen && island.panelSession?.id == card.sessionID && island.claude.card(for: island.panelSession!)?.id == card.id
+        guard onIsland || onPanel else { return }
+        let guarded = card.id == island.claude.frontCard?.id ? island.claude.frontCardGuarded
+            : Date().timeIntervalSince(card.received) < ClaudeModel.guardSeconds
+        guard !guarded else { return }
+        if allow, !card.isPlan, Island.isLong(card.command), !(seen ?? island.claude.frontCardFullySeen) { return }
         haptic()
         island.claude.answer(card, allow: allow, message: message)
+        let word = card.isPlan ? (allow ? "Plan approved" : "Keep planning") : (allow ? "Allowed" : "Denied")
+        island.claude.session(card.sessionID)?.lastAnswerWord = word
         let content = card.isPlan
-            ? (allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Plan approved", second: nil)
-                     : PeekContent(symbol: "arrow.uturn.left", icon: nil, tint: .needsYou, word: "Keep planning", second: nil))
-            : (allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: "Allowed", second: nil)
-                     : PeekContent(symbol: "xmark", icon: nil, tint: .blocked, word: "Denied", second: nil))
+            ? (allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: word, second: nil)
+                     : PeekContent(symbol: "arrow.uturn.left", icon: nil, tint: .needsYou, word: word, second: nil))
+            : (allow ? PeekContent(symbol: "checkmark", icon: nil, tint: .done, word: word, second: nil)
+                     : PeekContent(symbol: "xmark", icon: nil, tint: .blocked, word: word, second: nil))
         if island.claude.frontCard == nil { showPeek(content, seconds: 1.5) }
     }
 
     /// An answer picked on a question card: back through the waiting hook, and Claude carries on with it.
     func answerQuestion(_ card: QuestionCard, answers: [String: String]) {
-        guard !island.claude.frontCardGuarded, island.displayedQuestion?.id == card.id else { return }
+        let onPanel = island.panelOpen && island.panelSession.flatMap { island.claude.question(for: $0) }?.id == card.id
+        guard !island.claude.frontCardGuarded, island.displayedQuestion?.id == card.id || onPanel else { return }
         haptic()
         island.claude.answer(card, answers: answers)
         Log.app.notice("Question answered from the island")

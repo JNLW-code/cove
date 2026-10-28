@@ -12,7 +12,8 @@ final class DevCommands {
     private var tokens: [Int32] = []
 
     /// Only when launched with COVE_UI_TEST=1 (never by `make run` or the installed app): answer the front card.
-    static let testOnly = ["test.allow", "test.deny", "test.reply", "test.answerq", "test.seen", "test.note", "test.record", "test.update", "test.setup"]
+    static let testOnly = ["test.allow", "test.deny", "test.reply", "test.answerq", "test.seen", "test.note", "test.record", "test.update", "test.setup",
+                           "test.panel.allow", "test.panel.deny"]
 
     init(handler: @escaping @MainActor @Sendable (String) -> Void) {
         let names = ProcessInfo.processInfo.environment["COVE_UI_TEST"] == "1" ? Self.names + Self.testOnly : Self.names
