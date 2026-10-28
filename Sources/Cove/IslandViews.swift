@@ -8,6 +8,10 @@ final class IslandActions {
 
     func togglePin() { controller?.togglePin() }
     func toggleEdit() { controller?.toggleEdit() }
+    func panelClicked() { controller?.sidePanel.clickedInside() }
+    func panelPin() { controller?.sidePanel.togglePin() }
+    func panelSelect(_ session: ClaudeSession) { controller?.sidePanel.select(session) }
+    func panelOpenInApp(_ session: ClaudeSession) { controller?.island.claude.bringForward(session) }
     func toggleTheme() { controller?.toggleTheme() }
     func openMenu() { controller?.openMenu() }
     func open(_ app: RecentApps.Entry) { controller?.island.recentApps.open(app) }

@@ -1,8 +1,9 @@
 import AppKit
 import Carbon
 
-/// Global shortcuts: Allow and Deny (registered only while a card is showing) and the Launchpad key (always on).
-/// Carbon hot keys need no Accessibility permission. Defaults ⌃⌥Y / ⌃⌥N / ⌘4; stored in UserDefaults as key code + modifiers.
+/// Global shortcuts: Allow and Deny (registered only while a card is showing), the Launchpad key and the Claude
+/// panel key (always on). Carbon hot keys need no Accessibility permission. Defaults ⌃⌥Y / ⌃⌥N / ⌘4 / ⌃⌥C;
+/// stored in UserDefaults as key code + modifiers.
 @MainActor
 final class HotKeys {
     struct Combo: Equatable, Sendable {
@@ -33,19 +34,23 @@ final class HotKeys {
     static let defaultAllow = Combo(keyCode: UInt32(kVK_ANSI_Y), modifiers: UInt32(controlKey | optionKey))
     static let defaultDeny = Combo(keyCode: UInt32(kVK_ANSI_N), modifiers: UInt32(controlKey | optionKey))
     static let defaultLaunchpad = Combo(keyCode: UInt32(kVK_ANSI_4), modifiers: UInt32(cmdKey))
+    static let defaultPanel = Combo(keyCode: UInt32(kVK_ANSI_C), modifiers: UInt32(controlKey | optionKey))
 
     nonisolated(unsafe) private static weak var shared: HotKeys?
     private var handler: EventHandlerRef?
     private var refs: [EventHotKeyRef] = []
     private var launchpadRef: EventHotKeyRef?
+    private var panelRef: EventHotKeyRef?
     private let onAllow: () -> Void
     private let onDeny: () -> Void
     private let onLaunchpad: () -> Void
+    private let onPanel: () -> Void
 
-    init(onAllow: @escaping () -> Void, onDeny: @escaping () -> Void, onLaunchpad: @escaping () -> Void) {
+    init(onAllow: @escaping () -> Void, onDeny: @escaping () -> Void, onLaunchpad: @escaping () -> Void, onPanel: @escaping () -> Void) {
         self.onAllow = onAllow
         self.onDeny = onDeny
         self.onLaunchpad = onLaunchpad
+        self.onPanel = onPanel
         Self.shared = self
     }
 
@@ -62,6 +67,7 @@ final class HotKeys {
     var allow: Combo { Self.load("allowKey", default: Self.defaultAllow) }
     var deny: Combo { Self.load("denyKey", default: Self.defaultDeny) }
     var launchpad: Combo { Self.load("launchpadKey", default: Self.defaultLaunchpad) }
+    var panel: Combo { Self.load("panelKey", default: Self.defaultPanel) }
 
     /// Registers both shortcuts. Safe to call again; it re-registers.
     func register() {
@@ -91,6 +97,19 @@ final class HotKeys {
         }
     }
 
+    /// The Claude panel key stays registered for the life of the app; call again after it changes.
+    func registerPanel() {
+        if let panelRef { UnregisterEventHotKey(panelRef); self.panelRef = nil }
+        installHandler()
+        let id = EventHotKeyID(signature: OSType(0x434F_5645), id: 4)
+        var ref: EventHotKeyRef?
+        if RegisterEventHotKey(panel.keyCode, panel.modifiers, id, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
+            panelRef = ref
+        } else {
+            Log.app.error("Could not register the Claude panel shortcut \(self.panel.display, privacy: .public)")
+        }
+    }
+
     private func installHandler() {
         if handler == nil {
             var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -115,6 +134,7 @@ final class HotKeys {
         case 1: onAllow()
         case 2: onDeny()
         case 3: onLaunchpad()
+        case 4: onPanel()
         default: break
         }
     }

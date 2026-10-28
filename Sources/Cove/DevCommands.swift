@@ -7,7 +7,8 @@ import notify
 final class DevCommands {
     static let names = ["theme.dark", "theme.light", "theme.system", "theme.glass", "demo.toggle", "demo.next",
                         "show.resting", "show.compact", "show.peek", "show.expanded", "open", "close", "edit.toggle", "pin.toggle", "menu.open", "calendar.request",
-                        "launchpad.toggle", "launchpad.next", "launchpad.type", "launchpad.categories", "launchpad.folder", "launchpad.demo", "update.check", "setup.open"]
+                        "launchpad.toggle", "launchpad.next", "launchpad.type", "launchpad.categories", "launchpad.folder", "launchpad.demo", "update.check", "setup.open",
+                        "panel.toggle", "panel.next", "panel.demo"]
     private var tokens: [Int32] = []
 
     /// Only when launched with COVE_UI_TEST=1 (never by `make run` or the installed app): answer the front card.

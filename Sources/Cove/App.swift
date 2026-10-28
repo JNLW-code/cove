@@ -119,6 +119,11 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             submenu("Widgets", widgets),
         ]))
 
+        menu.addItem(submenu("Claude Panel", [
+            item("Open  (\(island.hotKeyPanel))", #selector(togglePanel), on: island.panelOpen),
+            item("Change Shortcut…", #selector(recordPanelShortcut)),
+        ]))
+
         menu.addItem(.separator())
         menu.addItem(submenu("Permissions", permissionItems()))
         let login = item("Launch at Login", #selector(toggleLogin), on: LaunchAtLogin.isOn, enabled: LaunchAtLogin.isInstalledCopy)
@@ -284,18 +289,31 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// One box that records the keys for the Launchpad (default ⌘4).
     @objc private func recordLaunchpadShortcut() {
+        recordShortcut(title: "Launchpad shortcut", key: "launchpadKey", default: HotKeys.defaultLaunchpad)
+    }
+
+    /// One box that records the keys for the Claude panel (default ⌃⌥C).
+    @objc private func recordPanelShortcut() {
+        recordShortcut(title: "Claude panel shortcut", key: "panelKey", default: HotKeys.defaultPanel)
+    }
+
+    @objc private func togglePanel() {
+        controller?.sidePanel.toggle()
+    }
+
+    private func recordShortcut(title: String, key: String, default combo: HotKeys.Combo) {
         let alert = NSAlert()
-        alert.messageText = "Launchpad shortcut"
+        alert.messageText = title
         alert.informativeText = "Click the box and press the keys you want. It works in every app, so pick one nothing else needs."
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
-        let box = KeyCaptureView(combo: HotKeys.load("launchpadKey", default: HotKeys.defaultLaunchpad))
+        let box = KeyCaptureView(combo: HotKeys.load(key, default: combo))
         alert.accessoryView = box
         alert.window.initialFirstResponder = box
         let previous = NSWorkspace.shared.frontmostApplication
         NSApp.activate()
-        if alert.runModal() == .alertFirstButtonReturn, let combo = box.combo {
-            HotKeys.save(combo, for: "launchpadKey")
+        if alert.runModal() == .alertFirstButtonReturn, let picked = box.combo {
+            HotKeys.save(picked, for: key)
             controller?.shortcutsChanged()
         }
         giveFocusBack(to: previous)
@@ -351,6 +369,18 @@ final class CoveApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "launchpad.folder": controller.openFolder(island.apps.categories.first)
         case "launchpad.demo": island.music = Demo.track; island.weather = Demo.weather   // sample widgets without Spotify or Music
         case "update.check": updater?.checkForUpdates()
+        case "panel.toggle": controller.sidePanel.toggle()
+        case "panel.next":   // the session after the shown one, in rail order
+            let all = SessionRail.groups(island.claude.sessions).flatMap { $0 }
+            if let current = island.panelSession, let index = all.firstIndex(where: { $0.id == current.id }), !all.isEmpty {
+                controller.sidePanel.select(all[(index + 1) % all.count])
+            }
+        case "panel.demo":   // sample sessions with a sample conversation, panel open and pinned
+            controller.holdDemo(); Demo.fill(island)
+            // build/Cove.app sits in the repo, so scripts/ is two folders up from the bundle.
+            island.claude.sessions.first?.transcriptPath = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("scripts/fake-chat.jsonl").path
+            controller.sidePanel.open(pinned: true)
         case "setup.open": setup?.show()
         case "test.setup":   // applies the default choices without the window (hooks install into $HOME, so only in a scratch home)
             if let lines = setup?.apply(SetupChoices()) { for line in lines { Log.app.notice("Setup result: \(line, privacy: .public)") } }

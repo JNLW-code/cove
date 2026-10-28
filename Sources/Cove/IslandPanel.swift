@@ -64,6 +64,8 @@ final class IslandController: NSObject {
     private var focusWatcher: FocusWatcher?
     private var peekQueue: [(PeekContent, Double)] = []
     private var recentPeekKeys: [String: Date] = [:]
+    /// The Claude side panel on the right edge of the screen.
+    let sidePanel: SidePanelController
 
     nonisolated(unsafe) private static weak var shared: IslandController?
 
@@ -78,6 +80,7 @@ final class IslandController: NSObject {
         host = IslandHostView(frame: NSRect(origin: .zero, size: notch.size))
         hosting = HostingView(rootView: IslandRoot(island: island, actions: actions))
         panel = IslandPanel(contentRect: notch.rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        sidePanel = SidePanelController(island: island, actions: actions)
         super.init()
         actions.controller = self
         Self.shared = self
@@ -133,13 +136,21 @@ final class IslandController: NSObject {
         focusWatcher?.startIfPossible()
         island.claude.onChanged = { [weak self] in self?.claudeChanged() }
         island.claude.onCardsChanged = { [weak self] in self?.cardsChanged() }
+        island.claude.onSessionEnded = { [weak self] id in
+            guard let self else { return }
+            self.sidePanel.forget(session: id)
+            if self.island.panelSessionID == id { self.island.panelSessionID = nil; self.sidePanel.refresh(now: true) }
+        }
         hotKeys = HotKeys(onAllow: { [weak self] in self?.answerFront(allow: true) },
                           onDeny: { [weak self] in self?.answerFront(allow: false) },
-                          onLaunchpad: { [weak self] in self?.toggleLaunchpad() })
+                          onLaunchpad: { [weak self] in self?.toggleLaunchpad() },
+                          onPanel: { [weak self] in self?.sidePanel.toggle() })
         island.hotKeyAllow = hotKeys?.allow.display ?? island.hotKeyAllow
         island.hotKeyDeny = hotKeys?.deny.display ?? island.hotKeyDeny
         island.hotKeyLaunchpad = hotKeys?.launchpad.display ?? island.hotKeyLaunchpad
+        island.hotKeyPanel = hotKeys?.panel.display ?? island.hotKeyPanel
         hotKeys?.registerLaunchpad()
+        hotKeys?.registerPanel()
         setHotCorner(Settings.hotCorner)
         let socket = ClaudeSocket(onMessage: { [weak self] message in self?.island.claude.handle(message) },
                                   onRequestClosed: { [weak self] id in self?.island.claude.requestClosed(id) })
@@ -176,8 +187,9 @@ final class IslandController: NSObject {
         return .resting
     }
 
-    /// Claude sessions changed: refresh the pill, or the open island's size.
+    /// Claude sessions changed: refresh the pill, or the open island's size, and the side panel's conversation.
     private func claudeChanged() {
+        sidePanel.refresh()
         if island.mode == .resting || island.mode == .compact {
             if island.mode != baseMode { show(baseMode, animation: Self.switchAnimation) }
         } else if island.mode == .expanded {
@@ -207,8 +219,10 @@ final class IslandController: NSObject {
         island.hotKeyAllow = hotKeys?.allow.display ?? island.hotKeyAllow
         island.hotKeyDeny = hotKeys?.deny.display ?? island.hotKeyDeny
         island.hotKeyLaunchpad = hotKeys?.launchpad.display ?? island.hotKeyLaunchpad
+        island.hotKeyPanel = hotKeys?.panel.display ?? island.hotKeyPanel
         if island.claude.frontCard != nil { hotKeys?.register() }
         hotKeys?.registerLaunchpad()
+        hotKeys?.registerPanel()
     }
 
     // MARK: Launchpad
@@ -722,6 +736,7 @@ final class IslandController: NSObject {
         island.notchSize = notch.size
         island.screenWidth = notch.screen.frame.width
         panel.setFrame(frame(for: island.mode), display: true)
+        sidePanel.layout()
     }
 
     @objc private func appearanceChanged() {

@@ -162,6 +162,9 @@ final class ClaudeSession: Identifiable {
     var unpushed: Int?
     /// Where Claude Code writes this session's transcript; cost and turns are read from it.
     var transcriptPath: String?
+    /// The conversation shown in the side panel, read from the transcript while the panel is open.
+    var chat: [ChatItem] = []
+    var chatLoaded = false
     /// What the session has cost so far and how many prompts it has had, from the transcript.
     var usage = UsageTotals()
     var usageRead = Date.distantPast
@@ -270,6 +273,8 @@ final class ClaudeModel {
     var onChanged: (() -> Void)?
     /// Called when a new card arrives or the front card changes.
     var onCardsChanged: (() -> Void)?
+    /// A session ended (SessionEnd, or its process went away): its id, for anything caching per session.
+    var onSessionEnded: ((String) -> Void)?
     /// The 400 ms after a card appears or moves on, during which clicks and shortcuts are ignored.
     static let guardSeconds: TimeInterval = 0.4
     var frontCardShownAt = Date.distantPast
@@ -514,6 +519,7 @@ final class ClaudeModel {
 
     private func end(_ id: String) {
         if let s = session(id) { closeReply(s) }
+        onSessionEnded?(id)
         Task { [reader] in await reader.forget(session: id) }
         settleCards(for: id)
         live.removeAll { $0.id == id }

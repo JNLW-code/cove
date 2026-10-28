@@ -162,6 +162,20 @@ final class Island {
     var hotKeyAllow = HotKeys.defaultAllow.display
     var hotKeyDeny = HotKeys.defaultDeny.display
     var hotKeyLaunchpad = HotKeys.defaultLaunchpad.display
+    var hotKeyPanel = HotKeys.defaultPanel.display
+
+    // MARK: Claude side panel
+    /// The panel on the right edge is on screen.
+    var panelOpen = false
+    /// Pinned by a click (or the pin button): it stays until Esc, ⌃⌥C or a click outside.
+    var panelPinned = false
+    /// The session the panel shows; nil means the most urgent one.
+    var panelSessionID: String?
+    /// The session the panel shows: the chosen one if it still exists, else the most urgent, else the first.
+    var panelSession: ClaudeSession? {
+        if let id = panelSessionID, let s = claude.sessions.first(where: { $0.id == id }) { return s }
+        return claude.mostUrgent ?? claude.sessions.first
+    }
 
     init() {
         let defaults = UserDefaults.standard
