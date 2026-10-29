@@ -57,21 +57,55 @@ enum Typist {
         press(keyCode: 9, flags: .maskCommand)   // ⌘V
         try? await Task.sleep(for: .milliseconds(350))
         restore(saved, to: pasteboard)
-        // Return sends. A slash command first opens the app's command list, where Return picks the entry,
-        // so press again while the words are still in the box (up to three times).
-        var sent = false
-        for attempt in 0..<3 {
-            press(keyCode: 36, flags: [])
-            try? await Task.sleep(for: .milliseconds(450))
-            guard let composer else { sent = true; break }      // nothing to read back: trust it
-            var value: AnyObject?
-            AXUIElementCopyAttributeValue(composer, kAXValueAttribute as CFString, &value)
-            let left = (value as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if left.isEmpty || !left.contains(text.prefix(20)) { sent = true; break }
-            Log.app.notice("Typist: Return \(attempt + 1, privacy: .public) left the words in the box")
+        // The app's editor ignores synthetic Return (only menu shortcuts like ⌘V reach it), so press its own
+        // send button through Accessibility. Return is the fallback when no button is exposed.
+        // No Send button while Claude is busy (Stop sits there): Return then queues the words in the app.
+        let pressed = pressSend(in: appElement, below: composer.flatMap(frame(of:)))
+        if !pressed { press(keyCode: 36, flags: []) }
+        Log.app.notice("Typist: composer \(composer.map(describe) ?? "clicked", privacy: .public), via \(pressed ? "Send button" : "Return", privacy: .public)")
+        return nil
+    }
+
+    /// The app's own Send button (labelled "Send" or "Send message"), pressed through AXPress, which the app
+    /// honours. Nothing else is ever pressed: while Claude works, the same spot holds Stop.
+    static func pressSend(in app: AXUIElement, below boxFrame: CGRect?) -> Bool {
+        var windowValue: AnyObject?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &windowValue) == .success,
+              let window = windowValue else { return false }
+        let floor = boxFrame?.minY ?? 0
+        var send: AXUIElement?
+        var seen: [String] = []
+        walk(window as! AXUIElement, depth: 0) { element, role in
+            guard send == nil, role == "AXButton", let f = frame(of: element), f.midY >= floor - 8 else { return }
+            var desc: AnyObject?, title: AnyObject?
+            AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &desc)
+            AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+            let label = [desc, title].compactMap { $0 as? String }.joined(separator: " ")
+                .lowercased().trimmingCharacters(in: .whitespaces)
+            seen.append(label.isEmpty ? "(no label)" : String(label.prefix(24)))
+            if label == "send" || label.hasPrefix("send message") { send = element }
         }
-        Log.app.notice("Typist: composer \(composer.map(describe) ?? "clicked", privacy: .public), sent \(sent, privacy: .public)")
-        return sent ? nil : "Typed into the app but not sent: press Return there."
+        Log.app.notice("Typist: buttons by the box: \(seen.joined(separator: " · "), privacy: .public)")
+        guard let send else { return false }
+        return AXUIElementPerformAction(send, kAXPressAction as CFString) == .success
+    }
+
+    /// Test aid: presses the first button in the Claude app's front window whose label contains the words.
+    static func pressButton(labelled wanted: String, in app: AXUIElement) -> Bool {
+        var windowValue: AnyObject?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &windowValue) == .success,
+              let window = windowValue else { return false }
+        var found: AXUIElement?
+        walk(window as! AXUIElement, depth: 0) { element, role in
+            guard role == "AXButton", found == nil else { return }
+            var desc: AnyObject?, title: AnyObject?
+            AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &desc)
+            AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+            let label = [desc, title].compactMap { $0 as? String }.joined(separator: " ").lowercased()
+            if label.contains(wanted.lowercased()) { found = element }
+        }
+        guard let found else { return false }
+        return AXUIElementPerformAction(found, kAXPressAction as CFString) == .success
     }
 
     /// The message box: the lowest text area or text field in the app's front window.
