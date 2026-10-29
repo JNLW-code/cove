@@ -1,1 +1,5 @@
-The Claude side panel grows up. Claude's questions are answered in the chat. The reply box takes Shift+Return for a new line and sends slash commands (/model, /clear…) to the app. The chat updates live from the transcript instead of waiting for hook events, and each open starts on the session that needs you, else the one you last typed into. New tabs: Plan (Claude's step list and its last plan), Diff (every edit this session, old lines red, new lines green), Files (everything read or changed, click to open) and Terminal (every command with what it printed). "Always" on a permission card allows the same kind of request for the rest of that session; clear the rules from the Claude Panel menu.
+## 0.11
+
+- Replies and slash commands typed from the panel now send on their own: Cove pastes the words into the Claude app and presses its Send button.
+- A pinned panel stays open while you click in other apps. The pin, Esc or ⌃⌥C close it.
+- The reply box sits under every tab, Terminal included.
