@@ -120,15 +120,15 @@ struct SessionPane: View {
             .padding(.horizontal, 10).padding(.vertical, 6)
             Rectangle().fill(p.rim).frame(height: 1)
             switch island.panelTab {
-            case .chat:
-                ChatList(session: session, island: island, actions: actions)
-                Rectangle().fill(p.rim).frame(height: 1)
-                PanelCompose(session: session, island: island, actions: actions)
+            case .chat: ChatList(session: session, island: island, actions: actions)
             case .plan: PlanTab(session: session, island: island)
             case .diff: DiffTab(session: session, island: island)
             case .files: FilesTab(session: session, island: island, actions: actions)
             case .terminal: TerminalTab(session: session, island: island)
             }
+            // The reply box lives under every tab, so a note can go off while reading the diff or the terminal.
+            Rectangle().fill(p.rim).frame(height: 1)
+            PanelCompose(session: session, island: island, actions: actions)
         }
     }
 

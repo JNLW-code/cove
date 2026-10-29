@@ -33,41 +33,45 @@ enum Typist {
             composer = findComposer(in: appElement) ?? composerAtBottom(of: appElement)
             if composer != nil { break }
         }
-        var typed = false
         if let composer {
+            // Keyboard focus must be real: a click on the box, not just the AX focus flag.
+            if let box = frame(of: composer) { click(at: CGPoint(x: box.midX, y: box.midY)) }
             AXUIElementSetAttributeValue(composer, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-            try? await Task.sleep(for: .milliseconds(150))
-            // Prefer setting the value straight in; fall back to pasting if the box refuses.
-            typed = AXUIElementSetAttributeValue(composer, kAXValueAttribute as CFString, text as CFTypeRef) == .success
-            if typed {
-                try? await Task.sleep(for: .milliseconds(150))
-                var value: AnyObject?
-                AXUIElementCopyAttributeValue(composer, kAXValueAttribute as CFString, &value)
-                typed = (value as? String)?.contains(text.prefix(20)) == true
-            }
+            try? await Task.sleep(for: .milliseconds(200))
         } else {
             // No text box exposed: click where the message box sits (bottom centre of the window) to focus it.
             guard let window = focusedWindowFrame(of: appElement) else {
                 Log.app.error("Typist: no window; roles seen: \(roleSummary(in: appElement), privacy: .public)")
                 return "Could not find the Claude window."
             }
-            let point = CGPoint(x: window.midX, y: window.maxY - 70)
-            click(at: point)
+            click(at: CGPoint(x: window.midX, y: window.maxY - 70))
             try? await Task.sleep(for: .milliseconds(250))
             Log.app.notice("Typist: clicked the message box area; roles seen: \(roleSummary(in: appElement), privacy: .public)")
         }
-        if !typed {
-            let pasteboard = NSPasteboard.general
-            let saved = snapshot(pasteboard)
-            pasteboard.clearContents()
-            pasteboard.setString(text, forType: .string)
-            press(keyCode: 9, flags: .maskCommand)   // ⌘V
-            try? await Task.sleep(for: .milliseconds(300))
-            restore(saved, to: pasteboard)
+        // Paste rather than set the value: the app's editor only takes text that arrives as real input.
+        // (Setting AXValue showed the words but Return then sent nothing.)
+        let pasteboard = NSPasteboard.general
+        let saved = snapshot(pasteboard)
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        press(keyCode: 9, flags: .maskCommand)   // ⌘V
+        try? await Task.sleep(for: .milliseconds(350))
+        restore(saved, to: pasteboard)
+        // Return sends. A slash command first opens the app's command list, where Return picks the entry,
+        // so press again while the words are still in the box (up to three times).
+        var sent = false
+        for attempt in 0..<3 {
+            press(keyCode: 36, flags: [])
+            try? await Task.sleep(for: .milliseconds(450))
+            guard let composer else { sent = true; break }      // nothing to read back: trust it
+            var value: AnyObject?
+            AXUIElementCopyAttributeValue(composer, kAXValueAttribute as CFString, &value)
+            let left = (value as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if left.isEmpty || !left.contains(text.prefix(20)) { sent = true; break }
+            Log.app.notice("Typist: Return \(attempt + 1, privacy: .public) left the words in the box")
         }
-        press(keyCode: 36, flags: [])                // Return sends
-        Log.app.notice("Typist: composer \(composer.map(describe) ?? "clicked", privacy: .public), via \(typed ? "AXValue" : "paste", privacy: .public)")
-        return nil
+        Log.app.notice("Typist: composer \(composer.map(describe) ?? "clicked", privacy: .public), sent \(sent, privacy: .public)")
+        return sent ? nil : "Typed into the app but not sent: press Return there."
     }
 
     /// The message box: the lowest text area or text field in the app's front window.
