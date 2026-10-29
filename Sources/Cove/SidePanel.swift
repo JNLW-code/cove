@@ -22,7 +22,6 @@ final class SidePanelController {
     private var leaveTask: Task<Void, Never>?
     private var slideTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
-    private var outsideClickMonitor: Any?
     private var keyMonitor: Any?
     private var clickMonitor: Any?
     private var previous: NSRunningApplication?
@@ -181,21 +180,9 @@ final class SidePanelController {
         if !panel.isKeyWindow { panel.makeKey() }
     }
 
+    /// Pinned means it stays: clicks in other apps leave it where it is. The pin button, Esc and ⌃⌥C close it.
     private func setPinned(_ pinned: Bool) {
         island.panelPinned = pinned
-        if pinned, outsideClickMonitor == nil {
-            outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { _ in
-                Task { @MainActor in SidePanelController.shared?.outsideClick() }
-            }
-        } else if !pinned, let monitor = outsideClickMonitor {
-            NSEvent.removeMonitor(monitor)
-            outsideClickMonitor = nil
-        }
-    }
-
-    private func outsideClick() {
-        guard island.panelOpen, island.panelPinned, !panel.frame.contains(NSEvent.mouseLocation) else { return }
-        close()
     }
 
     /// Esc closes the panel once it has the keyboard (after a click in it). Other keys pass through.
